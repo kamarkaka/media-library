@@ -1,0 +1,26 @@
+<a href="/player/<%= video.id %>" class="group bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all">
+  <div class="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+    <% if (video.cover_image) { %>
+    <img src="/api/videos/<%= video.id %>/cover" alt="<%= video.filename %>"
+         class="w-full h-full object-cover" loading="lazy">
+    <% } else { %>
+    <div class="w-full h-full flex items-center justify-center text-gray-500">
+      <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+      </svg>
+    </div>
+    <% } %>
+    <% if (typeof playback !== 'undefined' && playback && video.length) { %>
+    <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
+      <div class="h-full bg-blue-500" style="width: <%= Math.min(100, playback.position / video.length * 100) %>%"></div>
+    </div>
+    <% } %>
+  </div>
+  <div class="p-2">
+    <p class="text-sm text-gray-200 truncate" title="<%= video.filename %>"><%= video.filename %></p>
+    <% if (video.release_date) { %>
+    <p class="text-xs text-gray-500 mt-0.5"><%= video.release_date %></p>
+    <% } %>
+  </div>
+</a>

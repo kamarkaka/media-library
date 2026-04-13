@@ -1,0 +1,144 @@
+<%- include('partials/head') %>
+<div class="flex flex-1 overflow-hidden">
+  <%
+    const hasFilters = filters.genres.length || filters.directors.length ||
+                       filters.makers.length || filters.labels.length || filters.castMembers.length;
+  %>
+
+  <% if (hasFilters) { %>
+  <aside class="w-56 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto flex-shrink-0 hidden md:block">
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Filters</h2>
+    <form method="GET" action="/" id="filter-form">
+      <% if (currentFilters.q) { %><input type="hidden" name="q" value="<%= currentFilters.q %>"><% } %>
+      <input type="hidden" name="sort" value="<%= currentFilters.sort %>">
+
+      <% if (filters.genres.length) { %>
+      <div class="mb-3">
+        <label class="block text-gray-500 text-xs mb-1">Genre</label>
+        <select name="genre" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm" onchange="this.form.submit()">
+          <option value="">All</option>
+          <% filters.genres.forEach(function(g) { %>
+          <option value="<%= g.name %>" <%= currentFilters.genre === g.name ? 'selected' : '' %>><%= g.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% } %>
+
+      <% if (filters.directors.length) { %>
+      <div class="mb-3">
+        <label class="block text-gray-500 text-xs mb-1">Director</label>
+        <select name="director" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm" onchange="this.form.submit()">
+          <option value="">All</option>
+          <% filters.directors.forEach(function(d) { %>
+          <option value="<%= d.name %>" <%= currentFilters.director === d.name ? 'selected' : '' %>><%= d.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% } %>
+
+      <% if (filters.makers.length) { %>
+      <div class="mb-3">
+        <label class="block text-gray-500 text-xs mb-1">Maker</label>
+        <select name="maker" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm" onchange="this.form.submit()">
+          <option value="">All</option>
+          <% filters.makers.forEach(function(m) { %>
+          <option value="<%= m.name %>" <%= currentFilters.maker === m.name ? 'selected' : '' %>><%= m.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% } %>
+
+      <% if (filters.labels.length) { %>
+      <div class="mb-3">
+        <label class="block text-gray-500 text-xs mb-1">Label</label>
+        <select name="label" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm" onchange="this.form.submit()">
+          <option value="">All</option>
+          <% filters.labels.forEach(function(l) { %>
+          <option value="<%= l.name %>" <%= currentFilters.label === l.name ? 'selected' : '' %>><%= l.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% } %>
+
+      <% if (filters.castMembers.length) { %>
+      <div class="mb-3">
+        <label class="block text-gray-500 text-xs mb-1">Cast</label>
+        <select name="cast" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm" onchange="this.form.submit()">
+          <option value="">All</option>
+          <% filters.castMembers.forEach(function(c) { %>
+          <option value="<%= c.name %>" <%= currentFilters.cast === c.name ? 'selected' : '' %>><%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <% } %>
+
+      <% if (currentFilters.genre || currentFilters.director || currentFilters.maker || currentFilters.label || currentFilters.cast) { %>
+      <a href="/<%= currentFilters.q ? '?q=' + encodeURIComponent(currentFilters.q) : '' %>"
+         class="text-xs text-blue-400 hover:underline">Clear filters</a>
+      <% } %>
+    </form>
+  </aside>
+  <% } %>
+
+  <div class="flex-1 overflow-y-auto p-6" id="library-content">
+    <!-- Search + Sort -->
+    <div class="flex items-center gap-3 mb-5">
+      <form method="GET" action="/" class="flex-1 flex gap-2">
+        <% if (currentFilters.genre) { %><input type="hidden" name="genre" value="<%= currentFilters.genre %>"><% } %>
+        <% if (currentFilters.director) { %><input type="hidden" name="director" value="<%= currentFilters.director %>"><% } %>
+        <% if (currentFilters.maker) { %><input type="hidden" name="maker" value="<%= currentFilters.maker %>"><% } %>
+        <% if (currentFilters.label) { %><input type="hidden" name="label" value="<%= currentFilters.label %>"><% } %>
+        <% if (currentFilters.cast) { %><input type="hidden" name="cast" value="<%= currentFilters.cast %>"><% } %>
+        <input type="hidden" name="sort" value="<%= currentFilters.sort %>">
+        <input type="text" name="q" value="<%= currentFilters.q || '' %>" placeholder="Search videos..."
+          class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">Search</button>
+      </form>
+      <select id="sort-select" class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm">
+        <option value="filename" <%= currentFilters.sort === 'filename' ? 'selected' : '' %>>Name</option>
+        <option value="release_date" <%= currentFilters.sort === 'release_date' ? 'selected' : '' %>>Release Date</option>
+        <option value="last_viewed" <%= currentFilters.sort === 'last_viewed' ? 'selected' : '' %>>Last Viewed</option>
+      </select>
+    </div>
+
+    <% if (recentPlayback && recentPlayback.position > 0) { %>
+    <a href="/player/<%= recentPlayback.id %>"
+       class="flex items-center gap-3 bg-blue-900/20 border border-blue-800/50 rounded-lg px-4 py-3 mb-5 hover:bg-blue-900/30 transition-colors">
+      <svg class="w-5 h-5 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+      </svg>
+      <span class="text-sm"><span class="text-blue-400">Resume:</span> <%= recentPlayback.filename %></span>
+    </a>
+    <% } %>
+
+    <!-- Video Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3" id="video-grid">
+      <% videos.forEach(function(video) { %>
+        <%- include('partials/video-card', { video: video, playback: playbackMap.get(video.id) }) %>
+      <% }) %>
+    </div>
+
+    <% if (pagination.hasMore) { %>
+    <div id="scroll-sentinel" class="py-8 text-center text-gray-600 text-sm"
+         data-page="<%= pagination.page %>"
+         data-filters='<%- JSON.stringify({ q: currentFilters.q || '', genre: currentFilters.genre || '', director: currentFilters.director || '', maker: currentFilters.maker || '', label: currentFilters.label || '', cast: currentFilters.cast || '', sort: currentFilters.sort }) %>'>
+      Loading more...
+    </div>
+    <% } %>
+
+    <% if (videos.length === 0) { %>
+    <div class="text-center text-gray-500 py-20">
+      <svg class="w-16 h-16 mx-auto mb-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+              d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+      </svg>
+      <p class="text-lg">No videos found</p>
+      <% if (!currentFilters.q && !currentFilters.genre && !currentFilters.director) { %>
+      <p class="mt-2 text-sm">Add video paths in <a href="/settings" class="text-blue-400 hover:underline">Settings</a> and scan your library.</p>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+</div>
+<script src="/js/library.js"></script>
+<%- include('partials/foot') %>

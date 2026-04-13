@@ -1,0 +1,28 @@
+<%- include('partials/head') %>
+<div class="flex items-center justify-center flex-1">
+  <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
+    <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>
+    <% if (error) { %>
+    <div class="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-4 text-sm">
+      <%= error %>
+    </div>
+    <% } %>
+    <form method="POST" action="/login">
+      <div class="mb-4">
+        <label class="block text-gray-400 mb-1 text-sm" for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <div class="mb-6">
+        <label class="block text-gray-400 mb-1 text-sm" for="password">Password</label>
+        <input type="password" id="password" name="password" required
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <button type="submit"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition-colors">
+        Login
+      </button>
+    </form>
+  </div>
+</div>
+<%- include('partials/foot') %>

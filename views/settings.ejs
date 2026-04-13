@@ -1,0 +1,62 @@
+<%- include('partials/head') %>
+<div class="max-w-3xl mx-auto p-6">
+  <h1 class="text-2xl font-bold mb-6">Settings</h1>
+
+  <!-- Library Paths -->
+  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Library Paths</h2>
+      <span class="text-sm text-gray-500"><%= videoCount %> videos in library</span>
+    </div>
+
+    <form id="add-path-form" class="flex gap-2 mb-4">
+      <input type="text" id="path-input" placeholder="/path/to/videos" required
+        class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors">Add Path</button>
+    </form>
+
+    <div id="path-list">
+      <% paths.forEach(function(p) { %>
+      <div class="flex items-center justify-between py-2.5 border-b border-gray-700 last:border-0" data-path-id="<%= p.id %>">
+        <code class="text-gray-300 text-sm"><%= p.path %></code>
+        <button onclick="deletePath(<%= p.id %>)" class="text-red-400 hover:text-red-300 text-xs ml-4">Remove</button>
+      </div>
+      <% }) %>
+    </div>
+
+    <% if (paths.length === 0) { %>
+    <p id="no-paths-msg" class="text-gray-500 text-sm py-2">No paths configured.</p>
+    <% } %>
+
+    <div class="mt-4 pt-4 border-t border-gray-700 flex items-center gap-4">
+      <button id="scan-btn" onclick="scanLibrary()"
+        class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition-colors">
+        Scan Library
+      </button>
+      <span id="scan-status" class="text-sm text-gray-400"></span>
+    </div>
+  </section>
+
+  <!-- Change Password -->
+  <section class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-lg font-semibold mb-4">Change Password</h2>
+    <form id="password-form" class="max-w-sm">
+      <div class="mb-3">
+        <label class="block text-gray-400 mb-1 text-sm" for="current-password">Current Password</label>
+        <input type="password" id="current-password" required
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-400 mb-1 text-sm" for="new-password">New Password</label>
+        <input type="password" id="new-password" required
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      </div>
+      <div class="flex items-center gap-3">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors">Update Password</button>
+        <span id="password-status" class="text-sm"></span>
+      </div>
+    </form>
+  </section>
+</div>
+<script src="/js/settings.js"></script>
+<%- include('partials/foot') %>
