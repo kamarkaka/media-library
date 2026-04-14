@@ -1,8 +1,8 @@
 <%- include('partials/head') %>
 <div class="flex flex-col flex-1">
   <!-- Video Player -->
-  <div class="flex-1 bg-black flex items-center justify-center relative min-h-0">
-    <video id="video-player" class="max-h-full max-w-full" controls
+  <div class="bg-black flex items-center justify-center">
+    <video id="video-player" class="w-full" style="max-width: 960px" controls
            data-video-id="<%= video.id %>"
            data-resume-position="<%= playback ? playback.position : 0 %>">
       <source src="/api/videos/<%= video.id %>/stream" type="video/mp4">
