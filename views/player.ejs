@@ -65,6 +65,26 @@
       </div>
       <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm transition-colors flex-shrink-0">Library</a>
     </div>
+
+    <%
+      const GB = 1024 * 1024 * 1024;
+      const MB = 1024 * 1024;
+      const formattedSize = video.file_size
+        ? (video.file_size >= GB ? (video.file_size / GB).toFixed(2) + ' GB' : (video.file_size / MB).toFixed(1) + ' MB')
+        : null;
+    %>
+    <% if (video.width || video.video_codec || video.audio_codec || video.bitrate || video.framerate || video.file_size) { %>
+    <div class="mt-3 pt-3 border-t border-gray-700/50">
+      <div class="text-sm text-gray-400 flex flex-wrap gap-x-4 gap-y-0.5">
+        <% if (video.width && video.height) { %><span>Resolution: <%= video.width %>&times;<%= video.height %></span><% } %>
+        <% if (video.video_codec) { %><span>Video: <%= video.video_codec.toUpperCase() %></span><% } %>
+        <% if (video.audio_codec) { %><span>Audio: <%= video.audio_codec.toUpperCase() %></span><% } %>
+        <% if (video.framerate) { %><span>FPS: <%= video.framerate %></span><% } %>
+        <% if (video.bitrate) { %><span>Bitrate: <%= (video.bitrate / 1000).toFixed(0) %> kbps</span><% } %>
+        <% if (formattedSize) { %><span>Size: <%= formattedSize %></span><% } %>
+      </div>
+    </div>
+    <% } %>
   </div>
 </div>
 <script src="/js/player.js"></script>
