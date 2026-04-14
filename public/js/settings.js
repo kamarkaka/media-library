@@ -56,8 +56,7 @@
   window.scanLibrary = function () {
     scanBtn.disabled = true;
     scanBtn.textContent = 'Scan started';
-    scanStatus.textContent = 'Check the progress toast in the bottom-right corner.';
-    scanStatus.className = 'text-sm text-gray-400';
+    scanStatus.textContent = '';;
 
     // Start polling immediately — don't wait for POST response
     if (window.startScanPolling) {
