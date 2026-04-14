@@ -1,7 +1,8 @@
 (function () {
   var toast = document.getElementById('scan-toast');
-  var toastPhase = document.getElementById('scan-toast-phase');
-  var toastDetail = document.getElementById('scan-toast-detail');
+  var toastCount = document.getElementById('scan-toast-count');
+  var toastFile = document.getElementById('scan-toast-file');
+  var toastStep = document.getElementById('scan-toast-step');
   var toastBar = document.getElementById('scan-toast-bar');
   var toastClose = document.getElementById('scan-toast-close');
   if (!toast) return;
@@ -34,20 +35,29 @@
         if (data.status === 'scanning') {
           show();
           var pct = data.total > 0 ? Math.round(data.processed / data.total * 100) : 0;
-          toastPhase.textContent = data.phase || 'Scanning...';
-          toastDetail.textContent = data.processed + ' / ' + data.total + (data.currentFile ? ' — ' + data.currentFile : '');
+
+          if (data.total > 0) {
+            toastCount.textContent = 'Processing ' + data.processed + ' / ' + data.total + ' files';
+          } else {
+            toastCount.textContent = data.step || 'Scanning...';
+          }
+
+          toastFile.textContent = data.currentFile || '';
+          toastStep.textContent = data.step || '';
           toastBar.style.width = pct + '%';
           setTimeout(poll, 500);
         } else if (data.status === 'done') {
-          toastPhase.textContent = 'Scan complete';
-          toastDetail.textContent = 'Added ' + data.added + ', removed ' + data.removed + ' videos';
+          toastCount.textContent = 'Scan complete';
+          toastFile.textContent = 'Added ' + data.added + ', removed ' + data.removed + ' videos';
+          toastStep.textContent = '';
           toastBar.style.width = '100%';
           show();
           polling = false;
           hideTimer = setTimeout(hide, 5000);
         } else if (data.status === 'error') {
-          toastPhase.textContent = 'Scan failed';
-          toastDetail.textContent = data.error || 'Unknown error';
+          toastCount.textContent = 'Scan failed';
+          toastFile.textContent = data.error || 'Unknown error';
+          toastStep.textContent = '';
           toastBar.style.width = '0%';
           show();
           polling = false;
@@ -61,7 +71,6 @@
       });
   }
 
-  // Start polling (called from settings page or on page load)
   window.startScanPolling = function () {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     if (!polling) {
@@ -70,7 +79,7 @@
     }
   };
 
-  // Check on every page load if a scan is running
+  // On page load, resume polling if a scan is active
   fetch('/api/library/scan/status')
     .then(function (r) { return r.json(); })
     .then(function (data) {
