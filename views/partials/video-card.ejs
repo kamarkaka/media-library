@@ -11,9 +11,13 @@
       </svg>
     </div>
     <% } %>
-    <% if (typeof playback !== 'undefined' && playback && video.length) { %>
+    <% if (typeof playback !== 'undefined' && playback && playback.position > 0) { %>
     <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
+      <% if (video.length) { %>
       <div class="h-full bg-blue-500" style="width: <%= Math.min(100, playback.position / video.length * 100) %>%"></div>
+      <% } else { %>
+      <div class="h-full bg-blue-500 w-full"></div>
+      <% } %>
     </div>
     <% } %>
   </div>

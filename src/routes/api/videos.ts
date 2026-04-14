@@ -21,7 +21,14 @@ router.get('/', async (req, res) => {
   };
 
   const result = await queryVideos(filters);
-  res.json(result);
+
+  // Attach playback state for progress bars
+  const videoIds = result.videos.map((v: any) => v.id);
+  const playbackStates =
+    videoIds.length > 0 ? await db('playback_state').whereIn('video_id', videoIds) : [];
+  const playbackMap = Object.fromEntries(playbackStates.map((p: any) => [p.video_id, p]));
+
+  res.json({ ...result, playbackMap });
 });
 
 // Stream video file with range-request support

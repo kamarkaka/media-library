@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db';
 import { Scraper } from '../scrapers/types';
@@ -29,6 +30,21 @@ function walkDirectory(dir: string): string[] {
   return results;
 }
 
+function getVideoDuration(filePath: string): number | null {
+  try {
+    const output = execFileSync('ffprobe', [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'csv=p=0',
+      filePath,
+    ], { timeout: 30000, encoding: 'utf-8' });
+    const seconds = parseFloat(output.trim());
+    return isNaN(seconds) ? null : Math.round(seconds);
+  } catch {
+    return null;
+  }
+}
+
 export async function scanLibrary(scraper: Scraper): Promise<{ added: number; removed: number }> {
   const libraryPaths = await db('library_paths').select('path');
 
@@ -54,13 +70,14 @@ export async function scanLibrary(scraper: Scraper): Promise<{ added: number; re
     try {
       const metadata = await scraper.scrape(filename);
       const id = metadata?.id || videoId;
+      const duration = metadata?.length || getVideoDuration(filePath);
 
       await db('videos').insert({
         id,
         filename,
         full_path: filePath,
         release_date: metadata?.releaseDate || null,
-        length: metadata?.length || null,
+        length: duration,
         director: metadata?.director || null,
         maker: metadata?.maker || null,
         label: metadata?.label || null,
@@ -100,6 +117,18 @@ export async function scanLibrary(scraper: Scraper): Promise<{ added: number; re
     if (!allFiles.has((video as any).full_path)) {
       await db('videos').where('id', (video as any).id).del();
       removed++;
+    }
+  }
+
+  // Fill in duration for existing videos missing it
+  const missingLength = await db('videos').whereNull('length').select('id', 'full_path');
+  for (const video of missingLength) {
+    const v = video as any;
+    if (fs.existsSync(v.full_path)) {
+      const duration = getVideoDuration(v.full_path);
+      if (duration) {
+        await db('videos').where('id', v.id).update({ length: duration });
+      }
     }
   }
 

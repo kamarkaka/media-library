@@ -34,7 +34,8 @@
           .then(function (r) { return r.json(); })
           .then(function (data) {
             data.videos.forEach(function (video) {
-              grid.insertAdjacentHTML('beforeend', createVideoCard(video));
+              var playback = data.playbackMap ? data.playbackMap[video.id] : null;
+              grid.insertAdjacentHTML('beforeend', createVideoCard(video, playback));
             });
             if (!data.hasMore) {
               sentinel.remove();
@@ -52,7 +53,16 @@
     observer.observe(sentinel);
   }
 
-  function createVideoCard(video) {
+  function createVideoCard(video, playback) {
+    var progressHtml = '';
+    if (playback && playback.position > 0) {
+      var barStyle = video.length
+        ? 'width: ' + Math.min(100, playback.position / video.length * 100) + '%'
+        : 'width: 100%';
+      progressHtml = '<div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">' +
+        '<div class="h-full bg-blue-500" style="' + barStyle + '"></div></div>';
+    }
+
     var coverHtml = video.cover_image
       ? '<img src="/api/videos/' + video.id + '/cover" alt="" class="w-full h-full object-cover" loading="lazy">'
       : '<div class="w-full h-full flex items-center justify-center text-gray-500">' +
@@ -66,7 +76,7 @@
       : '';
 
     return '<a href="/player/' + video.id + '" class="group bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all">' +
-      '<div class="aspect-[2/3] bg-gray-700 relative overflow-hidden">' + coverHtml + '</div>' +
+      '<div class="aspect-[2/3] bg-gray-700 relative overflow-hidden">' + coverHtml + progressHtml + '</div>' +
       '<div class="p-2">' +
       '<p class="text-sm text-gray-200 truncate">' + escapeHtml(video.filename) + '</p>' +
       dateHtml +

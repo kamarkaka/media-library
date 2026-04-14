@@ -9,6 +9,7 @@ RUN npm run build
 
 # Stage 2: Production image
 FROM node:20-alpine
+RUN apk add --no-cache ffmpeg
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
