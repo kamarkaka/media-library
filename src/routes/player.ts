@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db';
+import { getVideoNeighbors } from '../services/video-queries';
 
 const router = Router();
 
@@ -21,28 +22,7 @@ router.get('/:id', async (req, res) => {
     .where('video_cast.video_id', video.id)
     .select('cast_members.name');
 
-  // Prev/next by filename order (with id tiebreaker)
-  const prevVideo = await db('videos')
-    .whereRaw('(filename < ? OR (filename = ? AND id < ?))', [
-      video.filename,
-      video.filename,
-      video.id,
-    ])
-    .orderBy('filename', 'desc')
-    .orderBy('id', 'desc')
-    .select('id', 'filename')
-    .first();
-
-  const nextVideo = await db('videos')
-    .whereRaw('(filename > ? OR (filename = ? AND id > ?))', [
-      video.filename,
-      video.filename,
-      video.id,
-    ])
-    .orderBy('filename', 'asc')
-    .orderBy('id', 'asc')
-    .select('id', 'filename')
-    .first();
+  const { prev: prevVideo, next: nextVideo } = await getVideoNeighbors(video);
 
   res.render('player', {
     title: video.filename,

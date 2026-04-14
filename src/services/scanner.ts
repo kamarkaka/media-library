@@ -84,21 +84,32 @@ function getVideoDuration(filePath: string): number | null {
   }
 }
 
+async function syncRelation(
+  videoId: string,
+  items: string[],
+  lookupTable: string,
+  joinTable: string,
+  foreignKey: string,
+): Promise<void> {
+  await db(joinTable).where('video_id', videoId).del();
+  for (const name of items) {
+    let row: any = await db(lookupTable).where('name', name).first();
+    if (!row) {
+      const [id] = await db(lookupTable).insert({ name });
+      row = { id };
+    }
+    await db(joinTable).insert({ video_id: videoId, [foreignKey]: row.id }).onConflict(['video_id', foreignKey]).ignore();
+  }
+}
+
 export async function scanLibrary(scraper: Scraper): Promise<void> {
   if (scanProgress.status === 'scanning') return;
 
+  resetScanProgress();
   scanProgress.status = 'scanning';
-  scanProgress.total = 0;
-  scanProgress.processed = 0;
-  scanProgress.currentFile = '';
   scanProgress.step = 'Discovering files...';
-  scanProgress.added = 0;
-  scanProgress.updated = 0;
-  scanProgress.removed = 0;
-  scanProgress.error = undefined;
 
   try {
-    // Step 1: Discover all video files on disk
     console.log('[scan] Starting library scan');
     const libraryPaths = await db('library_paths').select('path');
     const allFiles: string[] = [];
@@ -109,58 +120,59 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
       }
     }
 
-    const existingVideos = await db('videos').select('id', 'full_path');
-    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, v.id]));
+    const existingVideos = await db('videos').select('id', 'full_path', 'length');
+    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length }]));
     const allFilesSet = new Set(allFiles);
-    const staleVideos = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path));
+    const staleIds = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path)).map((v: any) => v.id);
 
     const newCount = allFiles.filter((f) => !existingByPath.has(f)).length;
-    const existingCount = allFiles.length - newCount;
-    console.log(`[scan] Found ${allFiles.length} files on disk (${newCount} new, ${existingCount} existing, ${staleVideos.length} stale)`);
+    console.log(`[scan] Found ${allFiles.length} files on disk (${newCount} new, ${allFiles.length - newCount} existing, ${staleIds.length} stale)`);
     scanProgress.total = allFiles.length;
 
-    // Step 2: Process every file (insert new, update existing)
+    // Process every file (insert new, update existing)
     for (const filePath of allFiles) {
       const filename = path.basename(filePath);
-      const existingId = existingByPath.get(filePath);
-      const isNew = !existingId;
+      const existing = existingByPath.get(filePath);
+      const isNew = !existing;
       const label = `[${scanProgress.processed + 1}/${scanProgress.total}]`;
       scanProgress.currentFile = filename;
 
       try {
         // Sub-step 1: Add or confirm in database
+        let videoId: string;
         if (isNew) {
           scanProgress.step = 'Adding to database';
           console.log(`[scan] ${label} ${filename} — adding to database`);
-          const videoId = uuidv4();
+          videoId = uuidv4();
+          const duration = getVideoDuration(filePath);
           await db('videos').insert({
             id: videoId,
             filename,
             full_path: filePath,
-            release_date: null,
-            length: null,
-            director: null,
-            maker: null,
-            label: null,
-            cover_image: null,
+            length: duration,
           });
-          existingByPath.set(filePath, videoId);
+          if (duration) {
+            console.log(`[scan] ${label} ${filename} — duration: ${duration}s`);
+          } else {
+            console.log(`[scan] ${label} ${filename} — duration: unknown`);
+          }
         } else {
+          videoId = existing.id;
           scanProgress.step = 'Updating database';
           console.log(`[scan] ${label} ${filename} — already in database, updating`);
-        }
 
-        const videoId = existingByPath.get(filePath)!;
-
-        // Sub-step 2: Process duration
-        scanProgress.step = 'Processing duration';
-        console.log(`[scan] ${label} ${filename} — processing duration`);
-        const duration = getVideoDuration(filePath);
-        if (duration) {
-          await db('videos').where('id', videoId).update({ length: duration });
-          console.log(`[scan] ${label} ${filename} — duration: ${duration}s`);
-        } else {
-          console.log(`[scan] ${label} ${filename} — duration: unknown`);
+          // Sub-step 2: Update duration only if missing
+          if (existing.length == null) {
+            scanProgress.step = 'Processing duration';
+            console.log(`[scan] ${label} ${filename} — processing duration`);
+            const duration = getVideoDuration(filePath);
+            if (duration) {
+              await db('videos').where('id', videoId).update({ length: duration });
+              console.log(`[scan] ${label} ${filename} — duration: ${duration}s`);
+            } else {
+              console.log(`[scan] ${label} ${filename} — duration: unknown`);
+            }
+          }
         }
 
         // Sub-step 3: Scrape metadata
@@ -180,37 +192,16 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
             await db('videos').where('id', videoId).update(updates);
           }
 
-          // Update ID if scraper provides one
-          const finalId = metadata.id && metadata.id !== videoId ? metadata.id : videoId;
           if (metadata.id && metadata.id !== videoId) {
             await db('videos').where('id', videoId).update({ id: metadata.id });
-            existingByPath.set(filePath, metadata.id);
+            videoId = metadata.id;
           }
 
           if (metadata.genres) {
-            // Clear old genres and re-add
-            await db('video_genres').where('video_id', finalId).del();
-            for (const genreName of metadata.genres) {
-              let genre: any = await db('genres').where('name', genreName).first();
-              if (!genre) {
-                const [genreId] = await db('genres').insert({ name: genreName });
-                genre = { id: genreId };
-              }
-              await db('video_genres').insert({ video_id: finalId, genre_id: genre.id }).onConflict(['video_id', 'genre_id']).ignore();
-            }
+            await syncRelation(videoId, metadata.genres, 'genres', 'video_genres', 'genre_id');
           }
-
           if (metadata.cast) {
-            // Clear old cast and re-add
-            await db('video_cast').where('video_id', finalId).del();
-            for (const castName of metadata.cast) {
-              let castMember: any = await db('cast_members').where('name', castName).first();
-              if (!castMember) {
-                const [castId] = await db('cast_members').insert({ name: castName });
-                castMember = { id: castId };
-              }
-              await db('video_cast').insert({ video_id: finalId, cast_id: castMember.id }).onConflict(['video_id', 'cast_id']).ignore();
-            }
+            await syncRelation(videoId, metadata.cast, 'cast_members', 'video_cast', 'cast_id');
           }
         }
 
@@ -230,17 +221,12 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
       scanProgress.processed++;
     }
 
-    // Step 3: Remove stale entries (files that no longer exist on disk)
-    if (staleVideos.length > 0) {
+    // Remove stale entries in batch
+    if (staleIds.length > 0) {
       scanProgress.step = 'Removing stale entries';
-      console.log(`[scan] Removing ${staleVideos.length} stale entries`);
-      for (const video of staleVideos) {
-        const v = video as any;
-        scanProgress.currentFile = path.basename(v.full_path);
-        console.log(`[scan] Removing stale: ${path.basename(v.full_path)}`);
-        await db('videos').where('id', v.id).del();
-        scanProgress.removed++;
-      }
+      console.log(`[scan] Removing ${staleIds.length} stale entries`);
+      await db('videos').whereIn('id', staleIds).del();
+      scanProgress.removed = staleIds.length;
     }
 
     scanProgress.status = 'done';

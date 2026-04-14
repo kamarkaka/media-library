@@ -56,7 +56,7 @@
     }
   });
 
-  // Log: snapshot every 30 seconds during playback
+  // Log: snapshot every 10 seconds during playback
   var snapshotInterval = setInterval(function () {
     if (!video.paused && !video.ended) {
       logEvent('snapshot', video.currentTime);
@@ -97,6 +97,8 @@
   });
 
   window.addEventListener('beforeunload', function () {
+    clearInterval(saveInterval);
+    clearInterval(snapshotInterval);
     var data = JSON.stringify({ position: video.currentTime });
     navigator.sendBeacon('/api/playback/' + videoId, new Blob([data], { type: 'application/json' }));
   });

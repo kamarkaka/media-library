@@ -1,17 +1,11 @@
 import { Router } from 'express';
 import db from '../../db';
+import { getRecentPlayback } from '../../services/video-queries';
 
 const router = Router();
 
-// Get most recently viewed video
-router.get('/recent', async (req, res) => {
-  const recent = await db('playback_state')
-    .join('videos', 'playback_state.video_id', 'videos.id')
-    .orderBy('playback_state.last_viewed', 'desc')
-    .select('videos.*', 'playback_state.position', 'playback_state.last_viewed')
-    .first();
-
-  res.json(recent || null);
+router.get('/recent', async (_req, res) => {
+  res.json(await getRecentPlayback());
 });
 
 // Save playback position

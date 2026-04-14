@@ -56,7 +56,7 @@
   window.scanLibrary = function () {
     scanBtn.disabled = true;
     scanBtn.textContent = 'Scan started';
-    scanStatus.textContent = '';;
+    scanStatus.textContent = '';
 
     // Start polling immediately — don't wait for POST response
     if (window.startScanPolling) {
@@ -64,7 +64,6 @@
     }
 
     fetch('/api/library/scan', { method: 'POST' })
-      .then(function (res) { return res.json(); })
       .then(function () {})
       .catch(function (err) {
         scanStatus.textContent = 'Failed to start scan: ' + err.message;
@@ -108,9 +107,4 @@
     });
   }
 
-  function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
 })();

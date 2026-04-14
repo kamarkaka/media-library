@@ -1,43 +1,19 @@
 import { Router } from 'express';
-import db from '../db';
-import { queryVideos, getFilterOptions } from '../services/video-queries';
+import { queryVideos, getPlaybackMap, getRecentPlayback, getFilterOptions, parseVideoFilters } from '../services/video-queries';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
-  const filters = {
-    q: req.query.q as string | undefined,
-    genre: req.query.genre as string | undefined,
-    director: req.query.director as string | undefined,
-    maker: req.query.maker as string | undefined,
-    label: req.query.label as string | undefined,
-    cast: req.query.cast as string | undefined,
-    sort: (req.query.sort as string) || 'filename',
-    page: 1,
-    pageSize: 24,
-  };
-
+  const filters = { ...parseVideoFilters(req.query as Record<string, any>), page: 1, pageSize: 24 };
   const result = await queryVideos(filters);
-
-  // Get playback state for rendered videos
-  const videoIds = result.videos.map((v: any) => v.id);
-  const playbackStates =
-    videoIds.length > 0 ? await db('playback_state').whereIn('video_id', videoIds) : [];
-  const playbackMap = new Map(playbackStates.map((p: any) => [p.video_id, p]));
-
-  // Get most recent playback for resume banner
-  const recentPlayback = await db('playback_state')
-    .join('videos', 'playback_state.video_id', 'videos.id')
-    .orderBy('playback_state.last_viewed', 'desc')
-    .select('videos.*', 'playback_state.position', 'playback_state.last_viewed')
-    .first();
-
+  const playbackMap = await getPlaybackMap(result.videos.map((v: any) => v.id));
+  const recentPlayback = await getRecentPlayback();
   const filterOptions = await getFilterOptions();
 
   res.render('library', {
     title: 'Library',
     videos: result.videos,
-    playbackMap,
+    playbackMap: new Map(Object.entries(playbackMap)),
     recentPlayback,
     filters: filterOptions,
     currentFilters: filters,
