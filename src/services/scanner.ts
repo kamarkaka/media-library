@@ -102,7 +102,7 @@ async function syncRelation(
   }
 }
 
-export async function scanLibrary(scraper: Scraper): Promise<void> {
+export async function scanLibrary(scraper: Scraper, fullRescan = false): Promise<void> {
   if (scanProgress.status === 'scanning') return;
 
   resetScanProgress();
@@ -110,7 +110,7 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
   scanProgress.step = 'Discovering files...';
 
   try {
-    console.log('[scan] Starting library scan');
+    console.log(`[scan] Starting library scan (fullRescan=${fullRescan})`);
     const libraryPaths = await db('library_paths').select('path');
     const allFiles: string[] = [];
     for (const { path: dirPath } of libraryPaths) {
@@ -125,12 +125,15 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
     const allFilesSet = new Set(allFiles);
     const staleIds = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path)).map((v: any) => v.id);
 
-    const newCount = allFiles.filter((f) => !existingByPath.has(f)).length;
-    console.log(`[scan] Found ${allFiles.length} files on disk (${newCount} new, ${allFiles.length - newCount} existing, ${staleIds.length} stale)`);
-    scanProgress.total = allFiles.length;
+    const newFiles = allFiles.filter((f) => !existingByPath.has(f));
+    const filesToProcess = fullRescan ? allFiles : newFiles;
+    console.log(`[scan] Found ${allFiles.length} files on disk (${newFiles.length} new, ${allFiles.length - newFiles.length} existing, ${staleIds.length} stale)`);
+    if (!fullRescan && filesToProcess.length < allFiles.length) {
+      console.log(`[scan] Quick scan — processing ${filesToProcess.length} new files only`);
+    }
+    scanProgress.total = filesToProcess.length;
 
-    // Process every file (insert new, update existing)
-    for (const filePath of allFiles) {
+    for (const filePath of filesToProcess) {
       const filename = path.basename(filePath);
       const existing = existingByPath.get(filePath);
       const isNew = !existing;
@@ -138,7 +141,7 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
       scanProgress.currentFile = filename;
 
       try {
-        // Sub-step 1: Add or confirm in database
+        // Sub-step 1: Add or update in database
         let videoId: string;
         if (isNew) {
           scanProgress.step = 'Adding to database';
@@ -161,8 +164,8 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
           scanProgress.step = 'Updating database';
           console.log(`[scan] ${label} ${filename} — already in database, updating`);
 
-          // Sub-step 2: Update duration only if missing
-          if (existing.length == null) {
+          // Update duration: always on full rescan, only if missing otherwise
+          if (fullRescan || existing.length == null) {
             scanProgress.step = 'Processing duration';
             console.log(`[scan] ${label} ${filename} — processing duration`);
             const duration = getVideoDuration(filePath);
@@ -175,10 +178,12 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
           }
         }
 
-        // Sub-step 3: Scrape metadata
-        scanProgress.step = 'Scraping metadata';
-        console.log(`[scan] ${label} ${filename} — scraping metadata`);
-        const metadata = await scraper.scrape(filename);
+        // Sub-step 3: Scrape metadata (always on new files and full rescan, skip on quick scan for existing)
+        if (isNew || fullRescan) {
+          scanProgress.step = 'Scraping metadata';
+          console.log(`[scan] ${label} ${filename} — scraping metadata`);
+        }
+        const metadata = (isNew || fullRescan) ? await scraper.scrape(filename) : null;
         if (metadata) {
           const updates: Record<string, any> = {};
           if (metadata.releaseDate) updates.release_date = metadata.releaseDate;

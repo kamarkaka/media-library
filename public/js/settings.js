@@ -63,7 +63,12 @@
       window.startScanPolling();
     }
 
-    fetch('/api/library/scan', { method: 'POST' })
+    var fullRescan = document.getElementById('full-rescan');
+    fetch('/api/library/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullRescan: fullRescan ? fullRescan.checked : false }),
+    })
       .then(function () {})
       .catch(function (err) {
         scanStatus.textContent = 'Failed to start scan: ' + err.message;

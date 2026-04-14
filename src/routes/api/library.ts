@@ -4,17 +4,17 @@ import { getScraper } from '../../scrapers';
 
 const router = Router();
 
-router.post('/scan', (_req, res) => {
+router.post('/scan', (req, res) => {
   const progress = getScanProgress();
   if (progress.status === 'scanning') {
     return res.json({ success: true, message: 'Scan already in progress' });
   }
 
-  // Fire and forget — scan runs in background
+  const fullRescan = req.body?.fullRescan === true;
   const scraper = getScraper();
-  scanLibrary(scraper).catch(console.error);
+  scanLibrary(scraper, fullRescan).catch(console.error);
 
-  res.json({ success: true, message: 'Scan started' });
+  res.json({ success: true, message: fullRescan ? 'Full rescan started' : 'Scan started' });
 });
 
 router.get('/scan/status', (_req, res) => {
