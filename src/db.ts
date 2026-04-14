@@ -39,6 +39,7 @@ export async function initDatabase(): Promise<void> {
       t.text('maker').nullable();
       t.text('label').nullable();
       t.text('cover_image').nullable();
+      t.text('scraper_type').nullable();
       t.integer('width').nullable();
       t.integer('height').nullable();
       t.text('video_codec').nullable();
@@ -110,6 +111,7 @@ export async function initDatabase(): Promise<void> {
   const newCols: [string, string][] = [
     ['code', 'TEXT'],
     ['name', 'TEXT'],
+    ['scraper_type', 'TEXT'],
     ['width', 'INTEGER'],
     ['height', 'INTEGER'],
     ['video_codec', 'TEXT'],

@@ -146,7 +146,7 @@ async function run(): Promise<void> {
     await db.raw('PRAGMA journal_mode = WAL');
     await db.raw('PRAGMA foreign_keys = ON');
 
-    const scraper = getScraper();
+    const defaultScraper = getScraper();
 
     progress({ step: 'Discovering files...' });
     console.log(`[scan] Starting library scan (fullRescan=${fullRescan})`);
@@ -160,8 +160,8 @@ async function run(): Promise<void> {
       }
     }
 
-    const existingVideos = await db('videos').select('id', 'full_path', 'length');
-    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length }]));
+    const existingVideos = await db('videos').select('id', 'full_path', 'length', 'scraper_type');
+    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length, scraper_type: v.scraper_type }]));
     const allFilesSet = new Set(allFiles);
     const staleIds = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path)).map((v: any) => v.id);
 
@@ -219,6 +219,7 @@ async function run(): Promise<void> {
           progress({ step: 'Scraping metadata' });
           console.log(`[scan] ${label} ${filename} — scraping metadata`);
         }
+        const scraper = existing?.scraper_type ? getScraper(existing.scraper_type) : defaultScraper;
         const metadata = (isNew || fullRescan) ? await scraper.scrape(filename) : null;
         if (metadata) {
           const updates: Record<string, any> = {};

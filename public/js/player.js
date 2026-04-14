@@ -273,7 +273,7 @@
     metaForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var body = {};
-      var inputs = metaForm.querySelectorAll('input[name]:not([disabled])');
+      var inputs = metaForm.querySelectorAll('input[name]:not([disabled]), select[name]');
       inputs.forEach(function (input) {
         body[input.name] = input.value;
       });

@@ -97,7 +97,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const allowedFields = [
-      'code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image',
+      'code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image', 'scraper_type',
     ];
     const updates: Record<string, any> = {};
     for (const field of allowedFields) {
