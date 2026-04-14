@@ -55,7 +55,7 @@
           setTimeout(poll, 500);
         } else if (data.status === 'done') {
           toastCount.textContent = 'Scan complete';
-          toastFile.textContent = 'Added ' + data.added + ', removed ' + data.removed + ' videos';
+          toastFile.textContent = 'Added ' + data.added + ', updated ' + data.updated + ', removed ' + data.removed;
           toastStep.textContent = '';
           toastBar.style.width = '100%';
           show();
