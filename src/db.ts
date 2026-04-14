@@ -37,6 +37,13 @@ export async function initDatabase(): Promise<void> {
       t.text('maker').nullable();
       t.text('label').nullable();
       t.text('cover_image').nullable();
+      t.integer('width').nullable();
+      t.integer('height').nullable();
+      t.text('video_codec').nullable();
+      t.text('audio_codec').nullable();
+      t.integer('bitrate').nullable();
+      t.float('framerate').nullable();
+      t.integer('file_size').nullable();
       t.timestamp('created_at').defaultTo(db.fn.now());
       t.timestamp('updated_at').defaultTo(db.fn.now());
     });
@@ -86,6 +93,24 @@ export async function initDatabase(): Promise<void> {
       t.text('data').notNullable();
       t.bigInteger('expires').notNullable();
     });
+  }
+
+  // Add columns for existing databases
+  const cols = await db.raw("PRAGMA table_info('videos')");
+  const colNames = new Set(cols.map((c: any) => c.name));
+  const newCols: [string, string][] = [
+    ['width', 'INTEGER'],
+    ['height', 'INTEGER'],
+    ['video_codec', 'TEXT'],
+    ['audio_codec', 'TEXT'],
+    ['bitrate', 'INTEGER'],
+    ['framerate', 'REAL'],
+    ['file_size', 'INTEGER'],
+  ];
+  for (const [name, type] of newCols) {
+    if (!colNames.has(name)) {
+      await db.raw(`ALTER TABLE videos ADD COLUMN ${name} ${type}`);
+    }
   }
 
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_release_date ON videos(release_date)');

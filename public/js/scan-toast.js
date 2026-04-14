@@ -5,12 +5,32 @@
   var toastStep = document.getElementById('scan-toast-step');
   var toastBar = document.getElementById('scan-toast-bar');
   var toastClose = document.getElementById('scan-toast-close');
+  var toastSpinner = document.getElementById('scan-toast-spinner');
   if (!toast) return;
+
+  var SPINNER_SVG = '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>';
+  var CHECK_SVG = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
 
   var polling = false;
   var hideTimer = null;
   var idleRetries = 0;
   var maxIdleRetries = 10; // keep polling up to 5s if still idle (scan hasn't started yet)
+
+  function setSpinnerDone() {
+    if (!toastSpinner) return;
+    toastSpinner.classList.remove('animate-spin', 'text-blue-400');
+    toastSpinner.classList.add('text-green-400');
+    toastSpinner.innerHTML = CHECK_SVG;
+    toastSpinner.setAttribute('stroke', 'currentColor');
+  }
+
+  function setSpinnerActive() {
+    if (!toastSpinner) return;
+    toastSpinner.classList.add('animate-spin', 'text-blue-400');
+    toastSpinner.classList.remove('text-green-400');
+    toastSpinner.innerHTML = SPINNER_SVG;
+    toastSpinner.removeAttribute('stroke');
+  }
 
   function stopScanPolling() {
     polling = false;
@@ -63,6 +83,7 @@
           toastFile.textContent = 'Added ' + data.added + ', updated ' + data.updated + ', removed ' + data.removed;
           toastStep.textContent = '';
           toastBar.style.width = '100%';
+          setSpinnerDone();
           show();
           stopScanPolling();
           hideTimer = setTimeout(hide, 5000);
@@ -99,6 +120,7 @@
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     idleRetries = 0;
     if (window.setScanButtonBusy) window.setScanButtonBusy(true);
+    setSpinnerActive();
     // Show toast immediately before any network round-trip
     toastCount.textContent = 'Starting scan...';
     toastFile.textContent = '';

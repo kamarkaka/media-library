@@ -45,25 +45,82 @@ function walkDirectory(dir: string): string[] {
   return results;
 }
 
-function sleep(ms: number): void {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {} // busy-wait for sync context
+interface VideoInfo {
+  duration: number | null;
+  width: number | null;
+  height: number | null;
+  videoCodec: string | null;
+  audioCodec: string | null;
+  bitrate: number | null;
+  framerate: number | null;
+  fileSize: number | null;
 }
 
-function getVideoDuration(filePath: string): number | null {
+function getVideoInfo(filePath: string): VideoInfo {
+  const info: VideoInfo = {
+    duration: null, width: null, height: null,
+    videoCodec: null, audioCodec: null, bitrate: null,
+    framerate: null, fileSize: null,
+  };
   try {
-    sleep(10000); // DEBUG: 10s delay before ffprobe
     const output = execFileSync('ffprobe', [
       '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'csv=p=0',
+      '-show_entries', 'format=duration,size,bit_rate',
+      '-show_entries', 'stream=codec_type,codec_name,width,height,r_frame_rate',
+      '-of', 'json',
       filePath,
     ], { timeout: 30000, encoding: 'utf-8' });
-    const seconds = parseFloat(output.trim());
-    return isNaN(seconds) ? null : Math.round(seconds);
-  } catch {
-    return null;
+
+    const data = JSON.parse(output);
+    const format = data.format || {};
+    const streams: any[] = data.streams || [];
+    const videoStream = streams.find((s: any) => s.codec_type === 'video');
+    const audioStream = streams.find((s: any) => s.codec_type === 'audio');
+
+    const dur = parseFloat(format.duration);
+    info.duration = isNaN(dur) ? null : Math.round(dur);
+    info.fileSize = format.size ? parseInt(format.size, 10) : null;
+    info.bitrate = format.bit_rate ? parseInt(format.bit_rate, 10) : null;
+
+    if (videoStream) {
+      info.width = videoStream.width || null;
+      info.height = videoStream.height || null;
+      info.videoCodec = videoStream.codec_name || null;
+      if (videoStream.r_frame_rate) {
+        const [num, den] = videoStream.r_frame_rate.split('/').map(Number);
+        if (den && !isNaN(num / den)) {
+          info.framerate = Math.round((num / den) * 100) / 100;
+        }
+      }
+    }
+    if (audioStream) {
+      info.audioCodec = audioStream.codec_name || null;
+    }
+
+    return info;
+  } catch (err) {
+    console.warn(`[scan] ffprobe failed for ${path.basename(filePath)}:`, err);
+    return info;
   }
+}
+
+function videoInfoColumns(info: VideoInfo): Record<string, any> {
+  return {
+    length: info.duration,
+    width: info.width,
+    height: info.height,
+    video_codec: info.videoCodec,
+    audio_codec: info.audioCodec,
+    bitrate: info.bitrate,
+    framerate: info.framerate,
+    file_size: info.fileSize,
+  };
+}
+
+function formatVideoSummary(info: VideoInfo): string {
+  const dur = info.duration ? info.duration + 's' : 'duration unknown';
+  const res = `${info.width}x${info.height}`;
+  return `${dur}, ${res}, ${info.videoCodec || '?'}`;
 }
 
 async function syncRelation(
@@ -121,6 +178,8 @@ async function run(): Promise<void> {
 
     progress({ total: filesToProcess.length });
 
+    await new Promise((r) => setTimeout(r, 1000));
+
     for (const filePath of filesToProcess) {
       const filename = path.basename(filePath);
       const existing = existingByPath.get(filePath);
@@ -134,33 +193,25 @@ async function run(): Promise<void> {
           progress({ step: 'Adding to database' });
           console.log(`[scan] ${label} ${filename} — adding to database`);
           videoId = uuidv4();
-          const duration = getVideoDuration(filePath);
+          const info = getVideoInfo(filePath);
           await db('videos').insert({
             id: videoId,
             filename,
             full_path: filePath,
-            length: duration,
+            ...videoInfoColumns(info),
           });
-          if (duration) {
-            console.log(`[scan] ${label} ${filename} — duration: ${duration}s`);
-          } else {
-            console.log(`[scan] ${label} ${filename} — duration: unknown`);
-          }
+          console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
         } else {
           videoId = existing.id;
           progress({ step: 'Updating database' });
           console.log(`[scan] ${label} ${filename} — already in database, updating`);
 
           if (fullRescan || existing.length == null) {
-            progress({ step: 'Processing duration' });
-            console.log(`[scan] ${label} ${filename} — processing duration`);
-            const duration = getVideoDuration(filePath);
-            if (duration) {
-              await db('videos').where('id', videoId).update({ length: duration });
-              console.log(`[scan] ${label} ${filename} — duration: ${duration}s`);
-            } else {
-              console.log(`[scan] ${label} ${filename} — duration: unknown`);
-            }
+            progress({ step: 'Probing video info' });
+            console.log(`[scan] ${label} ${filename} — probing video info`);
+            const info = getVideoInfo(filePath);
+            await db('videos').where('id', videoId).update(videoInfoColumns(info));
+            console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
           }
         }
 
@@ -221,6 +272,7 @@ async function run(): Promise<void> {
     }
 
     console.log(`[scan] Complete — added ${added}, updated ${updated}, removed ${removed}`);
+    await new Promise((r) => setTimeout(r, 1000));
     progress({ status: 'done', step: '', currentFile: '', added, updated, removed });
   } catch (err: any) {
     console.error('[scan] Fatal error:', err);
