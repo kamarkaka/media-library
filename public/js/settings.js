@@ -52,31 +52,29 @@
       .catch(function (err) { alert('Failed: ' + err.message); });
   };
 
-  // Scan library
+  // Scan library (fire-and-forget, progress shown via toast)
   window.scanLibrary = function () {
     scanBtn.disabled = true;
-    scanBtn.textContent = 'Scanning...';
-    scanStatus.textContent = '';
+    scanBtn.textContent = 'Scan started';
+    scanStatus.textContent = 'Check the progress toast in the bottom-right corner.';
     scanStatus.className = 'text-sm text-gray-400';
 
     fetch('/api/library/scan', { method: 'POST' })
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        if (data.success) {
-          scanStatus.textContent = 'Done! Added ' + data.added + ', removed ' + data.removed + ' videos.';
-          scanStatus.className = 'text-sm text-green-400';
-        } else {
-          scanStatus.textContent = data.error || 'Scan failed';
-          scanStatus.className = 'text-sm text-red-400';
+        if (data.success && window.startScanPolling) {
+          window.startScanPolling();
         }
       })
       .catch(function (err) {
-        scanStatus.textContent = 'Scan failed: ' + err.message;
+        scanStatus.textContent = 'Failed to start scan: ' + err.message;
         scanStatus.className = 'text-sm text-red-400';
       })
       .finally(function () {
-        scanBtn.disabled = false;
-        scanBtn.textContent = 'Scan Library';
+        setTimeout(function () {
+          scanBtn.disabled = false;
+          scanBtn.textContent = 'Scan Library';
+        }, 2000);
       });
   };
 

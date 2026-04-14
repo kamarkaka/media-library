@@ -1,18 +1,24 @@
 import { Router } from 'express';
-import { scanLibrary } from '../../services/scanner';
+import { scanLibrary, getScanProgress } from '../../services/scanner';
 import { getScraper } from '../../scrapers';
 
 const router = Router();
 
-router.post('/scan', async (_req, res) => {
-  try {
-    const scraper = getScraper();
-    const result = await scanLibrary(scraper);
-    res.json({ success: true, ...result });
-  } catch (err: any) {
-    console.error('Scan error:', err);
-    res.status(500).json({ error: err.message });
+router.post('/scan', (_req, res) => {
+  const progress = getScanProgress();
+  if (progress.status === 'scanning') {
+    return res.json({ success: true, message: 'Scan already in progress' });
   }
+
+  // Fire and forget — scan runs in background
+  const scraper = getScraper();
+  scanLibrary(scraper).catch(console.error);
+
+  res.json({ success: true, message: 'Scan started' });
+});
+
+router.get('/scan/status', (_req, res) => {
+  res.json(getScanProgress());
 });
 
 export default router;
