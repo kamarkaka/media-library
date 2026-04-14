@@ -61,7 +61,7 @@
     if (!video.paused && !video.ended) {
       logEvent('snapshot', video.currentTime);
     }
-  }, 30000);
+  }, 10000);
 
   video.addEventListener('ended', function () {
     clearInterval(snapshotInterval);
