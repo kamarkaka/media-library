@@ -127,6 +127,37 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Add/remove genre or cast for a video
+const relationTypes: Record<string, { table: string; joinTable: string; fk: string }> = {
+  genres: { table: 'genres', joinTable: 'video_genres', fk: 'genre_id' },
+  cast: { table: 'cast_members', joinTable: 'video_cast', fk: 'cast_id' },
+};
+
+for (const [route, cfg] of Object.entries(relationTypes)) {
+  router.post(`/:id/${route}`, async (req, res) => {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    let row: any = await db(cfg.table).where('name', name.trim()).first();
+    if (!row) {
+      const [id] = await db(cfg.table).insert({ name: name.trim() });
+      row = { id, name: name.trim() };
+    }
+    await db(cfg.joinTable)
+      .insert({ video_id: req.params.id, [cfg.fk]: row.id })
+      .onConflict(['video_id', cfg.fk]).ignore();
+    res.json({ id: row.id, name: row.name });
+  });
+
+  router.delete(`/:id/${route}/:tagId`, async (req, res) => {
+    await db(cfg.joinTable)
+      .where({ video_id: req.params.id, [cfg.fk]: req.params.tagId })
+      .del();
+    res.json({ success: true });
+  });
+}
+
 // Get prev/next neighbors
 router.get('/:id/neighbors', async (req, res) => {
   const video: any = await db('videos').where('id', req.params.id).first();

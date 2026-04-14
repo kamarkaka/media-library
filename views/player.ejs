@@ -86,16 +86,8 @@
           <input type="text" name="label" value="<%= video.label || '' %>"
             class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
         </div>
-        <div>
-          <label class="block text-gray-500 mb-1">Genres</label>
-          <input type="text" name="genres" value="<%= genres.map(function(g) { return g.name; }).join(', ') %>" placeholder="Action, Drama, ..."
-            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
-        </div>
-        <div>
-          <label class="block text-gray-500 mb-1">Cast</label>
-          <input type="text" name="cast" value="<%= cast.map(function(c) { return c.name; }).join(', ') %>" placeholder="Name, Name, ..."
-            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
-        </div>
+        <%- include('partials/video-tags', { tagType: 'genres', tagLabel: 'Genres', tagItems: genres, tagPlaceholder: 'Add genre...' }) %>
+        <%- include('partials/video-tags', { tagType: 'cast', tagLabel: 'Cast', tagItems: cast, tagPlaceholder: 'Add cast member...' }) %>
         <div class="md:col-span-2">
           <label class="block text-gray-500 mb-1">Cover Image URL</label>
           <input type="text" name="cover_image" value="<%= video.cover_image || '' %>"

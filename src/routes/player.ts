@@ -15,12 +15,14 @@ router.get('/:id', async (req, res) => {
   const genres = await db('genres')
     .join('video_genres', 'genres.id', 'video_genres.genre_id')
     .where('video_genres.video_id', video.id)
-    .select('genres.name');
+    .select('genres.id', 'genres.name')
+    .orderBy('genres.name');
 
   const cast = await db('cast_members')
     .join('video_cast', 'cast_members.id', 'video_cast.cast_id')
     .where('video_cast.video_id', video.id)
-    .select('cast_members.name');
+    .select('cast_members.id', 'cast_members.name')
+    .orderBy('cast_members.name');
 
   const { prev: prevVideo, next: nextVideo } = await getVideoNeighbors(video);
 
