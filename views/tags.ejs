@@ -1,0 +1,81 @@
+<%- include('partials/head') %>
+<div class="max-w-3xl mx-auto p-6">
+  <h1 class="text-2xl font-bold mb-6"><%= title %></h1>
+
+  <section class="bg-gray-800 rounded-lg p-6">
+    <form id="add-tag-form" class="flex gap-2 mb-4">
+      <input type="text" id="tag-input" placeholder="Add new <%= tagType === 'genres' ? 'genre' : 'cast member' %>..." required
+        class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors">Add</button>
+    </form>
+
+    <div id="tag-list" class="flex flex-wrap gap-2">
+      <% tags.forEach(function(tag) { %>
+      <span class="tag-item inline-flex items-center gap-1 bg-gray-700 text-gray-200 px-3 py-1.5 rounded-full text-sm" data-tag-id="<%= tag.id %>">
+        <%= tag.name %>
+        <button onclick="deleteTag(<%= tag.id %>)" class="text-gray-500 hover:text-red-400 ml-1 transition-colors" title="Remove">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </span>
+      <% }) %>
+    </div>
+
+    <% if (tags.length === 0) { %>
+    <p id="no-tags-msg" class="text-gray-500 text-sm">No <%= tagType === 'genres' ? 'genres' : 'cast members' %> yet.</p>
+    <% } %>
+  </section>
+</div>
+
+<script>
+(function () {
+  var tagType = '<%= tagType %>';
+  var form = document.getElementById('add-tag-form');
+  var input = document.getElementById('tag-input');
+  var list = document.getElementById('tag-list');
+  var noMsg = document.getElementById('no-tags-msg');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = input.value.trim();
+    if (!name) return;
+
+    fetch('/api/' + tagType, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name }),
+    })
+      .then(function (res) {
+        if (!res.ok) return res.json().then(function (d) { throw new Error(d.error); });
+        return res.json();
+      })
+      .then(function (tag) {
+        var span = document.createElement('span');
+        span.className = 'tag-item inline-flex items-center gap-1 bg-gray-700 text-gray-200 px-3 py-1.5 rounded-full text-sm';
+        span.dataset.tagId = tag.id;
+        span.innerHTML = escapeHtml(tag.name) +
+          '<button onclick="deleteTag(' + tag.id + ')" class="text-gray-500 hover:text-red-400 ml-1 transition-colors" title="Remove">' +
+          '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+          '</button>';
+        list.appendChild(span);
+        if (noMsg) noMsg.remove();
+        input.value = '';
+      })
+      .catch(function (err) { alert(err.message); });
+  });
+
+  window.deleteTag = function (id) {
+    if (!confirm('Remove this ' + (tagType === 'genres' ? 'genre' : 'cast member') + '?')) return;
+    fetch('/api/' + tagType + '/' + id, { method: 'DELETE' })
+      .then(function (res) {
+        if (res.ok) {
+          var el = document.querySelector('[data-tag-id="' + id + '"]');
+          if (el) el.remove();
+        }
+      })
+      .catch(function (err) { alert('Failed: ' + err.message); });
+  };
+})();
+</script>
+<%- include('partials/foot') %>

@@ -13,13 +13,22 @@
 <% if (authenticated) { %>
 <nav class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex items-center justify-between flex-shrink-0">
   <a href="/" class="text-xl font-bold text-white hover:text-blue-400 transition-colors">Media Library</a>
-  <div class="flex items-center gap-4">
-    <a href="/" class="text-gray-300 hover:text-white text-sm">Library</a>
-    <a href="/settings" class="text-gray-300 hover:text-white text-sm">Settings</a>
-    <form action="/logout" method="POST" class="inline">
-      <button type="submit" class="text-gray-500 hover:text-white text-sm">Logout</button>
-    </form>
+  <button id="nav-toggle" class="sm:hidden p-1 text-gray-400 hover:text-white transition-colors" aria-label="Menu">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+  </button>
+  <div id="nav-links" class="hidden sm:flex items-center gap-4">
+    <%- include('nav-links') %>
   </div>
 </nav>
+<div id="nav-mobile" class="hidden sm:hidden bg-gray-800 border-b border-gray-700 px-6 py-3 flex flex-col gap-3">
+  <%- include('nav-links') %>
+</div>
+<script>
+document.getElementById('nav-toggle').addEventListener('click', function () {
+  document.getElementById('nav-mobile').classList.toggle('hidden');
+});
+</script>
 <% } %>
 <main class="flex-1 flex flex-col">
