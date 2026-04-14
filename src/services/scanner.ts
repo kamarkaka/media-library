@@ -95,10 +95,12 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
 
   try {
     // Step 1: Discover all video files on disk
+    console.log('[scan] Starting library scan');
     const libraryPaths = await db('library_paths').select('path');
     const allFiles: string[] = [];
     for (const { path: dirPath } of libraryPaths) {
       if (fs.existsSync(dirPath)) {
+        console.log(`[scan] Scanning path: ${dirPath}`);
         allFiles.push(...walkDirectory(dirPath));
       }
     }
@@ -110,6 +112,7 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
     const newFiles = allFiles.filter((f) => !existingPaths.has(f));
     const staleVideos = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path));
 
+    console.log(`[scan] Found ${allFiles.length} files on disk, ${newFiles.length} new, ${staleVideos.length} stale`);
     scanProgress.total = newFiles.length;
 
     // Step 2: Process each new file through 3 sub-steps
@@ -120,6 +123,7 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
       try {
         // Sub-step 1: Add to database
         scanProgress.step = 'Adding to database';
+        console.log(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — adding to database`);
         const videoId = uuidv4();
         await db('videos').insert({
           id: videoId,
@@ -135,13 +139,18 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
 
         // Sub-step 2: Process duration
         scanProgress.step = 'Processing duration';
+        console.log(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — processing duration`);
         const duration = getVideoDuration(filePath);
         if (duration) {
           await db('videos').where('id', videoId).update({ length: duration });
+          console.log(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — duration: ${duration}s`);
+        } else {
+          console.log(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — duration: unknown`);
         }
 
         // Sub-step 3: Scrape metadata
         scanProgress.step = 'Scraping metadata';
+        console.log(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — scraping metadata`);
         const metadata = await scraper.scrape(filename);
         if (metadata) {
           const updates: Record<string, any> = {};
@@ -186,8 +195,9 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
 
         // All 3 steps succeeded — count as added
         scanProgress.added++;
+        console.log(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — done`);
       } catch (err) {
-        console.error(`Error processing ${filePath}:`, err);
+        console.error(`[scan] [${scanProgress.processed + 1}/${scanProgress.total}] ${filename} — FAILED:`, err);
         // Rollback: remove partially inserted video
         await db('videos').where('full_path', filePath).del().catch(() => {});
       }
@@ -198,9 +208,11 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
     // Step 3: Remove stale entries (files that no longer exist on disk)
     if (staleVideos.length > 0) {
       scanProgress.step = 'Removing stale entries';
+      console.log(`[scan] Removing ${staleVideos.length} stale entries`);
       for (const video of staleVideos) {
         const v = video as any;
         scanProgress.currentFile = path.basename(v.full_path);
+        console.log(`[scan] Removing stale: ${path.basename(v.full_path)}`);
         await db('videos').where('id', v.id).del();
         scanProgress.removed++;
       }
@@ -209,10 +221,11 @@ export async function scanLibrary(scraper: Scraper): Promise<void> {
     scanProgress.status = 'done';
     scanProgress.step = '';
     scanProgress.currentFile = '';
+    console.log(`[scan] Complete — added ${scanProgress.added}, removed ${scanProgress.removed}`);
   } catch (err: any) {
     scanProgress.status = 'error';
     scanProgress.step = '';
     scanProgress.error = err.message;
-    console.error('Scan error:', err);
+    console.error('[scan] Fatal error:', err);
   }
 }

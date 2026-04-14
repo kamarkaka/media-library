@@ -9,6 +9,8 @@
 
   var polling = false;
   var hideTimer = null;
+  var idleRetries = 0;
+  var maxIdleRetries = 10; // keep polling up to 5s if still idle (scan hasn't started yet)
 
   function show() {
     toast.classList.remove('hidden');
@@ -29,10 +31,15 @@
   }
 
   function poll() {
+    if (!polling) return;
+
     fetch('/api/library/scan/status')
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        if (!polling) return;
+
         if (data.status === 'scanning') {
+          idleRetries = 0;
           show();
           var pct = data.total > 0 ? Math.round(data.processed / data.total * 100) : 0;
 
@@ -63,7 +70,19 @@
           polling = false;
           hideTimer = setTimeout(hide, 8000);
         } else {
-          polling = false;
+          // idle — scan may not have started yet, retry a few times
+          if (idleRetries < maxIdleRetries) {
+            idleRetries++;
+            show();
+            toastCount.textContent = 'Starting scan...';
+            toastFile.textContent = '';
+            toastStep.textContent = '';
+            toastBar.style.width = '0%';
+            setTimeout(poll, 500);
+          } else {
+            polling = false;
+            hide();
+          }
         }
       })
       .catch(function () {
@@ -73,6 +92,7 @@
 
   window.startScanPolling = function () {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    idleRetries = 0;
     if (!polling) {
       polling = true;
       poll();

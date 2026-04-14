@@ -59,13 +59,14 @@
     scanStatus.textContent = 'Check the progress toast in the bottom-right corner.';
     scanStatus.className = 'text-sm text-gray-400';
 
+    // Start polling immediately — don't wait for POST response
+    if (window.startScanPolling) {
+      window.startScanPolling();
+    }
+
     fetch('/api/library/scan', { method: 'POST' })
       .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data.success && window.startScanPolling) {
-          window.startScanPolling();
-        }
-      })
+      .then(function () {})
       .catch(function (err) {
         scanStatus.textContent = 'Failed to start scan: ' + err.message;
         scanStatus.className = 'text-sm text-red-400';
