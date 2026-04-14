@@ -88,6 +88,18 @@ export async function initDatabase(): Promise<void> {
     });
   }
 
+  if (!(await db.schema.hasTable('playback_logs'))) {
+    await db.schema.createTable('playback_logs', (t) => {
+      t.increments('id').primary();
+      t.text('video_id').references('id').inTable('videos').onDelete('CASCADE');
+      t.text('event').notNullable(); // start, pause, resume, next, prev, snapshot
+      t.float('position').notNullable().defaultTo(0); // playback position in seconds
+      t.timestamp('created_at').defaultTo(db.fn.now());
+    });
+  }
+
+  await db.raw('CREATE INDEX IF NOT EXISTS idx_playback_logs_video ON playback_logs(video_id)');
+  await db.raw('CREATE INDEX IF NOT EXISTS idx_playback_logs_created ON playback_logs(created_at DESC)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_release_date ON videos(release_date)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_director ON videos(director)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_maker ON videos(maker)');
