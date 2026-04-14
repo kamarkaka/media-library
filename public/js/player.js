@@ -4,9 +4,6 @@
 
   var videoId = video.dataset.videoId;
   var resumePosition = parseFloat(video.dataset.resumePosition) || 0;
-  var playPauseBtn = document.getElementById('play-pause-btn');
-  var playIcon = document.getElementById('play-icon');
-  var pauseIcon = document.getElementById('pause-icon');
   var hasResumed = false;
 
   // Resume position without autoplay
@@ -15,27 +12,6 @@
       video.currentTime = resumePosition;
     }, { once: true });
   }
-
-  // Play/pause button
-  function updatePlayPauseIcon() {
-    if (video.paused) {
-      playIcon.classList.remove('hidden');
-      pauseIcon.classList.add('hidden');
-    } else {
-      playIcon.classList.add('hidden');
-      pauseIcon.classList.remove('hidden');
-    }
-  }
-
-  if (playPauseBtn) {
-    playPauseBtn.addEventListener('click', function () {
-      if (video.paused) { video.play(); } else { video.pause(); }
-    });
-  }
-
-  video.addEventListener('play', updatePlayPauseIcon);
-  video.addEventListener('pause', updatePlayPauseIcon);
-  video.addEventListener('ended', updatePlayPauseIcon);
 
   // --- Playback logging ---
 
@@ -67,7 +43,7 @@
     clearInterval(snapshotInterval);
   });
 
-  // Log: prev/next — intercept transport bar links
+  // Log: prev/next — intercept overlay nav links
   document.querySelectorAll('a[href^="/player/"]').forEach(function (link) {
     link.addEventListener('click', function () {
       var isPrev = link.title && link.title.startsWith('Previous');
