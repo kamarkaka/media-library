@@ -28,7 +28,8 @@
 
   <!-- Video Details -->
   <div class="bg-gray-800 border-t border-gray-700/50 px-6 py-4 flex-shrink-0">
-    <h1 class="text-base font-semibold truncate mb-4" title="<%= video.filename %>"><%= video.filename %></h1>
+    <% const displayTitle = video.name || video.filename; %>
+    <h1 class="text-base font-semibold break-words mb-4"><%= displayTitle %></h1>
 
     <%
       const GB = 1024 * 1024 * 1024;
@@ -55,6 +56,16 @@
     <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-4 pt-4 border-t border-gray-700/50">Details</h2>
     <form id="video-meta-form" data-video-id="<%= video.id %>">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div>
+          <label class="block text-gray-500 mb-1">Code</label>
+          <input type="text" name="code" value="<%= video.code || '' %>"
+            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-gray-500 mb-1">Name</label>
+          <input type="text" name="name" value="<%= video.name || '' %>"
+            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
+        </div>
         <div>
           <label class="block text-gray-500 mb-1">Release Date</label>
           <input type="date" name="release_date" value="<%= video.release_date || '' %>"

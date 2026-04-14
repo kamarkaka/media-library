@@ -90,36 +90,41 @@ async function syncRelation(
 }
 
 router.put('/:id', async (req, res) => {
-  const video = await db('videos').where('id', req.params.id).first();
-  if (!video) {
-    return res.status(404).json({ error: 'Video not found' });
-  }
-
-  const allowedFields = [
-    'release_date', 'director', 'maker', 'label', 'cover_image',
-  ];
-  const updates: Record<string, any> = {};
-  for (const field of allowedFields) {
-    if (field in req.body) {
-      const val = req.body[field];
-      updates[field] = val === '' ? null : val;
+  try {
+    const video = await db('videos').where('id', req.params.id).first();
+    if (!video) {
+      return res.status(404).json({ error: 'Video not found' });
     }
-  }
 
-  if ('genres' in req.body) {
-    await syncRelation(req.params.id, req.body.genres || '', 'genres', 'video_genres', 'genre_id');
-  }
-  if ('cast' in req.body) {
-    await syncRelation(req.params.id, req.body.cast || '', 'cast_members', 'video_cast', 'cast_id');
-  }
+    const allowedFields = [
+      'code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image',
+    ];
+    const updates: Record<string, any> = {};
+    for (const field of allowedFields) {
+      if (field in req.body) {
+        const val = req.body[field];
+        updates[field] = val === '' ? null : val;
+      }
+    }
 
-  if (Object.keys(updates).length > 0) {
-    updates.updated_at = new Date().toISOString();
-    await db('videos').where('id', req.params.id).update(updates);
-  }
+    if ('genres' in req.body) {
+      await syncRelation(req.params.id, req.body.genres || '', 'genres', 'video_genres', 'genre_id');
+    }
+    if ('cast' in req.body) {
+      await syncRelation(req.params.id, req.body.cast || '', 'cast_members', 'video_cast', 'cast_id');
+    }
 
-  const updated = await db('videos').where('id', req.params.id).first();
-  res.json(updated);
+    if (Object.keys(updates).length > 0) {
+      updates.updated_at = new Date().toISOString();
+      await db('videos').where('id', req.params.id).update(updates);
+    }
+
+    const updated = await db('videos').where('id', req.params.id).first();
+    res.json(updated);
+  } catch (err: any) {
+    console.error('[api] Failed to update video:', err);
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
 });
 
 // Get prev/next neighbors

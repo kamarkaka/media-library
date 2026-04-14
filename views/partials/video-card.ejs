@@ -1,7 +1,7 @@
 <a href="/player/<%= video.id %>" class="group bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all">
   <div class="aspect-[2/3] bg-gray-700 relative overflow-hidden">
     <% if (video.cover_image) { %>
-    <img src="/api/videos/<%= video.id %>/cover" alt="<%= video.filename %>"
+    <img src="/api/videos/<%= video.id %>/cover" alt="<%= video.name || video.filename %>"
          class="w-full h-full object-cover" loading="lazy">
     <% } else { %>
     <div class="w-full h-full flex items-center justify-center text-gray-500">
@@ -22,7 +22,8 @@
     <% } %>
   </div>
   <div class="p-2">
-    <p class="text-sm text-gray-200 truncate" title="<%= video.filename %>"><%= video.filename %></p>
+    <% const cardTitle = video.name || video.filename; %>
+    <p class="text-sm text-gray-200 break-words"><%= cardTitle %></p>
     <% if (video.release_date) { %>
     <p class="text-xs text-gray-500 mt-0.5"><%= video.release_date %></p>
     <% } %>

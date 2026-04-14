@@ -29,6 +29,8 @@ export async function initDatabase(): Promise<void> {
   if (!(await db.schema.hasTable('videos'))) {
     await db.schema.createTable('videos', (t) => {
       t.text('id').primary();
+      t.text('code').nullable();
+      t.text('name').nullable();
       t.text('filename').notNullable();
       t.text('full_path').notNullable().unique();
       t.date('release_date').nullable();
@@ -99,6 +101,8 @@ export async function initDatabase(): Promise<void> {
   const cols = await db.raw("PRAGMA table_info('videos')");
   const colNames = new Set(cols.map((c: any) => c.name));
   const newCols: [string, string][] = [
+    ['code', 'TEXT'],
+    ['name', 'TEXT'],
     ['width', 'INTEGER'],
     ['height', 'INTEGER'],
     ['video_codec', 'TEXT'],
