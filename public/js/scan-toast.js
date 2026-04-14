@@ -12,6 +12,11 @@
   var idleRetries = 0;
   var maxIdleRetries = 10; // keep polling up to 5s if still idle (scan hasn't started yet)
 
+  function stopScanPolling() {
+    polling = false;
+    if (window.setScanButtonBusy) window.setScanButtonBusy(false);
+  }
+
   function show() {
     toast.classList.remove('hidden');
     toast.classList.remove('opacity-0');
@@ -59,7 +64,7 @@
           toastStep.textContent = '';
           toastBar.style.width = '100%';
           show();
-          polling = false;
+          stopScanPolling();
           hideTimer = setTimeout(hide, 5000);
         } else if (data.status === 'error') {
           toastCount.textContent = 'Scan failed';
@@ -67,7 +72,7 @@
           toastStep.textContent = '';
           toastBar.style.width = '0%';
           show();
-          polling = false;
+          stopScanPolling();
           hideTimer = setTimeout(hide, 8000);
         } else {
           // idle — scan may not have started yet, retry a few times
@@ -80,7 +85,7 @@
             toastBar.style.width = '0%';
             setTimeout(poll, 500);
           } else {
-            polling = false;
+            stopScanPolling();
             hide();
           }
         }
@@ -93,6 +98,13 @@
   window.startScanPolling = function () {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     idleRetries = 0;
+    if (window.setScanButtonBusy) window.setScanButtonBusy(true);
+    // Show toast immediately before any network round-trip
+    toastCount.textContent = 'Starting scan...';
+    toastFile.textContent = '';
+    toastStep.textContent = '';
+    toastBar.style.width = '0%';
+    show();
     if (!polling) {
       polling = true;
       poll();

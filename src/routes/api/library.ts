@@ -1,18 +1,16 @@
 import { Router } from 'express';
-import { scanLibrary, getScanProgress, resetScanProgress } from '../../services/scanner';
-import { getScraper } from '../../scrapers';
+import { startScan, getScanProgress, resetScanProgress } from '../../services/scanner';
 
 const router = Router();
 
 router.post('/scan', (req, res) => {
   const progress = getScanProgress();
   if (progress.status === 'scanning') {
-    return res.json({ success: true, message: 'Scan already in progress' });
+    return res.json({ success: false, message: 'Scan already in progress' });
   }
 
   const fullRescan = req.body?.fullRescan === true;
-  const scraper = getScraper();
-  scanLibrary(scraper, fullRescan).catch(console.error);
+  startScan(fullRescan);
 
   res.json({ success: true, message: fullRescan ? 'Full rescan started' : 'Scan started' });
 });

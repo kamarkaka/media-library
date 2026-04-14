@@ -54,8 +54,8 @@
 
   // Scan library (fire-and-forget, progress shown via toast)
   window.scanLibrary = function () {
-    scanBtn.disabled = true;
-    scanBtn.textContent = 'Scan started';
+    if (scanBtn.disabled) return;
+    window.setScanButtonBusy(true);
     scanStatus.textContent = '';
 
     // Start polling immediately — don't wait for POST response
@@ -69,17 +69,28 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fullRescan: fullRescan ? fullRescan.checked : false }),
     })
-      .then(function () {})
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.success) {
+          scanStatus.textContent = data.message || 'Scan already in progress';
+          scanStatus.className = 'text-sm text-yellow-400';
+        }
+      })
       .catch(function (err) {
         scanStatus.textContent = 'Failed to start scan: ' + err.message;
         scanStatus.className = 'text-sm text-red-400';
-      })
-      .finally(function () {
-        setTimeout(function () {
-          scanBtn.disabled = false;
-          scanBtn.textContent = 'Scan Library';
-        }, 2000);
+        window.setScanButtonBusy(false);
       });
+  };
+
+  window.setScanButtonBusy = function (busy) {
+    scanBtn.disabled = busy;
+    scanBtn.textContent = busy ? 'Scan in progress...' : 'Scan Library';
+    if (busy) {
+      scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+      scanBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
   };
 
   // Change password
