@@ -39,4 +39,4 @@ jobs:
           context: .
           push: true
           no-cache: true
-          tags: kamarkaka/media-library:latest,kamarkaka/media-library:${{ github.sha }}
+          tags: kamarkaka4/media-library:latest,kamarkaka4/media-library:${{ github.sha }}
