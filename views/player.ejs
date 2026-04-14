@@ -2,36 +2,48 @@
 <div class="flex flex-col flex-1">
   <!-- Video Player -->
   <div class="flex-1 bg-black flex items-center justify-center relative min-h-0">
-    <video id="video-player" class="max-h-full max-w-full" controls autoplay
+    <video id="video-player" class="max-h-full max-w-full" controls
            data-video-id="<%= video.id %>"
            data-resume-position="<%= playback ? playback.position : 0 %>">
       <source src="/api/videos/<%= video.id %>/stream" type="video/mp4">
       Your browser does not support the video tag.
     </video>
+  </div>
 
+  <!-- Transport Bar -->
+  <div class="bg-gray-800 border-t border-gray-700 px-6 py-2 flex-shrink-0 flex items-center justify-center gap-3">
     <% if (prevVideo) { %>
-    <a href="/player/<%= prevVideo.id %>"
-       class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 p-2.5 rounded-full transition-colors"
-       title="Previous: <%= prevVideo.filename %>">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+    <a href="/player/<%= prevVideo.id %>" class="p-2 rounded-full hover:bg-gray-700 transition-colors" title="Previous: <%= prevVideo.filename %>">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z"/>
       </svg>
     </a>
+    <% } else { %>
+    <span class="p-2 text-gray-600"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z"/></svg></span>
     <% } %>
 
+    <button id="play-pause-btn" class="p-2.5 bg-white text-gray-900 rounded-full hover:bg-gray-200 transition-colors" title="Play/Pause">
+      <svg id="play-icon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+      </svg>
+      <svg id="pause-icon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"/>
+      </svg>
+    </button>
+
     <% if (nextVideo) { %>
-    <a href="/player/<%= nextVideo.id %>"
-       class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 p-2.5 rounded-full transition-colors"
-       title="Next: <%= nextVideo.filename %>">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    <a href="/player/<%= nextVideo.id %>" class="p-2 rounded-full hover:bg-gray-700 transition-colors" title="Next: <%= nextVideo.filename %>">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798L4.555 5.168z"/>
       </svg>
     </a>
+    <% } else { %>
+    <span class="p-2 text-gray-600"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798L4.555 5.168z"/></svg></span>
     <% } %>
   </div>
 
   <!-- Info Bar -->
-  <div class="bg-gray-800 border-t border-gray-700 px-6 py-3 flex-shrink-0">
+  <div class="bg-gray-800 border-t border-gray-700/50 px-6 py-3 flex-shrink-0">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0 flex-1">
         <h1 class="text-base font-semibold truncate" title="<%= video.filename %>"><%= video.filename %></h1>
@@ -51,15 +63,7 @@
         </div>
         <% } %>
       </div>
-      <div class="flex gap-2 flex-shrink-0">
-        <% if (prevVideo) { %>
-        <a href="/player/<%= prevVideo.id %>" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm transition-colors">Prev</a>
-        <% } %>
-        <% if (nextVideo) { %>
-        <a href="/player/<%= nextVideo.id %>" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm transition-colors">Next</a>
-        <% } %>
-        <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm transition-colors">Library</a>
-      </div>
+      <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-sm transition-colors flex-shrink-0">Library</a>
     </div>
   </div>
 </div>

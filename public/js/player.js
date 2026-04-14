@@ -4,13 +4,37 @@
 
   var videoId = video.dataset.videoId;
   var resumePosition = parseFloat(video.dataset.resumePosition) || 0;
+  var playPauseBtn = document.getElementById('play-pause-btn');
+  var playIcon = document.getElementById('play-icon');
+  var pauseIcon = document.getElementById('pause-icon');
 
-  // Resume playback position
+  // Resume position without autoplay
   if (resumePosition > 0) {
     video.addEventListener('loadedmetadata', function () {
       video.currentTime = resumePosition;
     }, { once: true });
   }
+
+  // Play/pause button
+  function updatePlayPauseIcon() {
+    if (video.paused) {
+      playIcon.classList.remove('hidden');
+      pauseIcon.classList.add('hidden');
+    } else {
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
+    }
+  }
+
+  if (playPauseBtn) {
+    playPauseBtn.addEventListener('click', function () {
+      if (video.paused) { video.play(); } else { video.pause(); }
+    });
+  }
+
+  video.addEventListener('play', updatePlayPauseIcon);
+  video.addEventListener('pause', updatePlayPauseIcon);
+  video.addEventListener('ended', updatePlayPauseIcon);
 
   // Periodically save position
   var lastSaved = resumePosition;
