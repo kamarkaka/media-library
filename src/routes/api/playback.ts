@@ -35,7 +35,7 @@ router.put('/:id', async (req, res) => {
 // Log a playback event
 const VALID_EVENTS = new Set(['start', 'pause', 'resume', 'next', 'prev', 'snapshot']);
 
-router.post('/:id/log', async (req, res) => {
+router.post('/:id/log', (req, res) => {
   const { event, position } = req.body;
   const videoId = req.params.id;
 
@@ -43,12 +43,8 @@ router.post('/:id/log', async (req, res) => {
     return res.status(400).json({ error: 'Invalid event type' });
   }
 
-  await db('playback_logs').insert({
-    video_id: videoId,
-    event,
-    position: typeof position === 'number' ? position : 0,
-    created_at: new Date().toISOString(),
-  });
+  const pos = typeof position === 'number' ? position.toFixed(1) : '0.0';
+  console.log(`[playback] ${event} video=${videoId} position=${pos}s`);
 
   res.json({ success: true });
 });
