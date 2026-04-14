@@ -9,7 +9,7 @@ RUN npm run build
 
 # Stage 2: Production image
 FROM node:20-alpine
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg chromium
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
@@ -17,6 +17,7 @@ COPY --from=build /app/dist ./dist
 COPY views/ ./views/
 COPY public/ ./public/
 
+ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 EXPOSE 3000
 VOLUME ["/data"]
 ENV DB_PATH=/data/library.db
