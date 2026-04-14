@@ -73,6 +73,55 @@ router.get('/:id/cover', async (req, res) => {
   stream.pipe(res);
 });
 
+async function syncRelation(
+  videoId: string, csv: string,
+  lookupTable: string, joinTable: string, foreignKey: string,
+): Promise<void> {
+  const names = csv.split(',').map((s: string) => s.trim()).filter(Boolean);
+  await db(joinTable).where('video_id', videoId).del();
+  for (const name of names) {
+    let row: any = await db(lookupTable).where('name', name).first();
+    if (!row) {
+      const [id] = await db(lookupTable).insert({ name });
+      row = { id };
+    }
+    await db(joinTable).insert({ video_id: videoId, [foreignKey]: row.id }).onConflict(['video_id', foreignKey]).ignore();
+  }
+}
+
+router.put('/:id', async (req, res) => {
+  const video = await db('videos').where('id', req.params.id).first();
+  if (!video) {
+    return res.status(404).json({ error: 'Video not found' });
+  }
+
+  const allowedFields = [
+    'release_date', 'director', 'maker', 'label', 'cover_image',
+  ];
+  const updates: Record<string, any> = {};
+  for (const field of allowedFields) {
+    if (field in req.body) {
+      const val = req.body[field];
+      updates[field] = val === '' ? null : val;
+    }
+  }
+
+  if ('genres' in req.body) {
+    await syncRelation(req.params.id, req.body.genres || '', 'genres', 'video_genres', 'genre_id');
+  }
+  if ('cast' in req.body) {
+    await syncRelation(req.params.id, req.body.cast || '', 'cast_members', 'video_cast', 'cast_id');
+  }
+
+  if (Object.keys(updates).length > 0) {
+    updates.updated_at = new Date().toISOString();
+    await db('videos').where('id', req.params.id).update(updates);
+  }
+
+  const updated = await db('videos').where('id', req.params.id).first();
+  res.json(updated);
+});
+
 // Get prev/next neighbors
 router.get('/:id/neighbors', async (req, res) => {
   const video: any = await db('videos').where('id', req.params.id).first();

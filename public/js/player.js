@@ -127,4 +127,56 @@
       console.error('Failed to log event:', err);
     });
   }
+
+  // --- Metadata toggle ---
+  var metaToggle = document.getElementById('metadata-toggle');
+  var metaContent = document.getElementById('metadata-content');
+  var metaChevron = document.getElementById('metadata-chevron');
+
+  if (metaToggle && metaContent) {
+    metaToggle.addEventListener('click', function () {
+      var isHidden = metaContent.style.display === 'none';
+      metaContent.style.display = isHidden ? 'grid' : 'none';
+      metaChevron.classList.toggle('rotate-90', isHidden);
+    });
+  }
+
+  // --- Metadata editing ---
+  var metaForm = document.getElementById('video-meta-form');
+  var metaStatus = document.getElementById('meta-save-status');
+
+  if (metaForm) {
+    metaForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var body = {};
+      var inputs = metaForm.querySelectorAll('input[name]:not([disabled])');
+      inputs.forEach(function (input) {
+        body[input.name] = input.value;
+      });
+
+      metaStatus.textContent = 'Saving...';
+      metaStatus.className = 'text-sm text-gray-400';
+
+      fetch('/api/videos/' + videoId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+        .then(function (result) {
+          if (result.ok) {
+            metaStatus.textContent = 'Saved!';
+            metaStatus.className = 'text-sm text-green-400';
+          } else {
+            metaStatus.textContent = result.data.error || 'Failed';
+            metaStatus.className = 'text-sm text-red-400';
+          }
+          setTimeout(function () { metaStatus.textContent = ''; }, 3000);
+        })
+        .catch(function (err) {
+          metaStatus.textContent = 'Failed: ' + err.message;
+          metaStatus.className = 'text-sm text-red-400';
+        });
+    });
+  }
 })();
