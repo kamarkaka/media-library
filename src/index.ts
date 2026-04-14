@@ -72,7 +72,7 @@ async function main() {
   app.use('/api', apiRouter);
 
   app.listen(config.port, () => {
-    console.log(`Video Player running at http://localhost:${config.port}`);
+    console.log(`Media Library running at http://localhost:${config.port}`);
   });
 }
 

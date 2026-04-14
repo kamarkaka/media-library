@@ -34,7 +34,7 @@ Open http://localhost:3000, log in, go to **Settings** to add video paths and sc
 docker compose up -d
 
 # Set up credentials inside the container
-docker compose exec video-player node dist/cli.js setup-auth
+docker compose exec media-library node dist/cli.js setup-auth
 ```
 
 Edit `docker-compose.yml` to mount your video directories:
