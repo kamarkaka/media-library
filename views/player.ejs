@@ -42,7 +42,6 @@
       Metadata
     </button>
     <div id="metadata-content" class="text-sm text-gray-400 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-4" style="display: none">
-      <div class="flex justify-between"><span class="text-gray-500">ID</span><span class="text-gray-300 truncate ml-2"><%= video.id %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Filename</span><span class="text-gray-300 truncate ml-2"><%= video.filename %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Duration</span><span class="text-gray-300"><%= video.length != null ? Math.floor(video.length / 60) + 'm ' + (video.length % 60) + 's' : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Resolution</span><span class="text-gray-300"><%= video.width && video.height ? video.width + ' × ' + video.height : '—' %></span></div>
@@ -86,8 +85,6 @@
           <input type="text" name="label" value="<%= video.label || '' %>"
             class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
         </div>
-        <%- include('partials/video-tags', { tagType: 'genres', tagLabel: 'Genres', tagItems: genres, tagPlaceholder: 'Add genre...' }) %>
-        <%- include('partials/video-tags', { tagType: 'cast', tagLabel: 'Cast', tagItems: cast, tagPlaceholder: 'Add cast member...' }) %>
         <div>
           <label class="block text-gray-500 mb-1">Cover Image URL</label>
           <input type="text" name="cover_image" value="<%= video.cover_image || '' %>"
@@ -100,6 +97,8 @@
             <option value="">Default</option>
           </select>
         </div>
+        <%- include('partials/video-tags', { tagType: 'genres', tagLabel: 'Genres', tagItems: genres, tagPlaceholder: 'Add genre...' }) %>
+        <%- include('partials/video-tags', { tagType: 'cast', tagLabel: 'Cast', tagItems: cast, tagPlaceholder: 'Add cast member...' }) %>
       </div>
       <div class="mt-4 flex items-center gap-3">
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded text-sm transition-colors">Save Changes</button>
