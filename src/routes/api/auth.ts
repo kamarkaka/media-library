@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import fs from 'fs';
-import path from 'path';
 import { config } from '../../config';
+import { setSetting } from '../../db';
 
 const router = Router();
 
-router.put('/password', (req, res) => {
+router.put('/password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -19,21 +18,8 @@ router.put('/password', (req, res) => {
 
   const newHash = bcrypt.hashSync(newPassword, 12);
 
-  // Update in-memory config
-  (config as any).authPasswordHash = newHash;
-
-  // Update .env file
-  const envPath = path.join(process.cwd(), '.env');
-  if (fs.existsSync(envPath)) {
-    let content = fs.readFileSync(envPath, 'utf-8');
-    const regex = /^AUTH_PASSWORD_HASH=.*$/m;
-    if (regex.test(content)) {
-      content = content.replace(regex, `AUTH_PASSWORD_HASH=${newHash}`);
-    } else {
-      content += `\nAUTH_PASSWORD_HASH=${newHash}\n`;
-    }
-    fs.writeFileSync(envPath, content);
-  }
+  await setSetting('auth_password_hash', newHash);
+  config.authPasswordHash = newHash;
 
   res.json({ success: true });
 });

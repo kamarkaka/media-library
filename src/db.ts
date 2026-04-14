@@ -89,6 +89,13 @@ export async function initDatabase(): Promise<void> {
     });
   }
 
+  if (!(await db.schema.hasTable('settings'))) {
+    await db.schema.createTable('settings', (t) => {
+      t.text('key').primary();
+      t.text('value');
+    });
+  }
+
   if (!(await db.schema.hasTable('sessions'))) {
     await db.schema.createTable('sessions', (t) => {
       t.text('sid').primary();
@@ -122,6 +129,10 @@ export async function initDatabase(): Promise<void> {
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_maker ON videos(maker)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_label ON videos(label)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_playback_last_viewed ON playback_state(last_viewed DESC)');
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await db('settings').insert({ key, value }).onConflict('key').merge();
 }
 
 export default db;

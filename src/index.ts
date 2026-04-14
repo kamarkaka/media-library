@@ -4,7 +4,7 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { config } from './config';
-import { initDatabase } from './db';
+import { initDatabase, setSetting } from './db';
 import db from './db';
 import { SQLiteSessionStore } from './session-store';
 import { requireAuth } from './middleware/auth';
@@ -18,10 +18,27 @@ import apiRouter from './routes/api';
 async function main() {
   await initDatabase();
 
+  // Load auth settings from database
+  const settings = await db('settings').whereIn('key', ['auth_username', 'auth_password_hash', 'session_secret']);
+  for (const { key, value } of settings) {
+    if (key === 'auth_username' && value) config.authUsername = value;
+    if (key === 'auth_password_hash' && value) config.authPasswordHash = value;
+    if (key === 'session_secret' && value) config.sessionSecret = value;
+  }
+
+  // Auto-generate session secret if none exists
+  if (!config.sessionSecret) {
+    const secret = crypto.randomBytes(32).toString('hex');
+    await setSetting('session_secret', secret);
+    config.sessionSecret = secret;
+  }
+
   // Auto-generate password if none configured
   if (!config.authPasswordHash) {
     const tempPassword = crypto.randomBytes(8).toString('hex');
-    (config as any).authPasswordHash = bcrypt.hashSync(tempPassword, 12);
+    const hash = bcrypt.hashSync(tempPassword, 12);
+    await setSetting('auth_password_hash', hash);
+    config.authPasswordHash = hash;
     console.log('='.repeat(50));
     console.log('No password configured!');
     console.log(`Temporary password: ${tempPassword}`);

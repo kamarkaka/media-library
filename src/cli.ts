@@ -1,8 +1,7 @@
 import bcrypt from 'bcryptjs';
 import readline from 'readline';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import { initDatabase, setSetting } from './db';
+import db from './db';
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -10,25 +9,9 @@ function question(prompt: string): Promise<string> {
   return new Promise((resolve) => rl.question(prompt, resolve));
 }
 
-function updateEnvFile(envPath: string, vars: Record<string, string>): void {
-  let content = '';
-  if (fs.existsSync(envPath)) {
-    content = fs.readFileSync(envPath, 'utf-8');
-  }
-
-  for (const [key, value] of Object.entries(vars)) {
-    const regex = new RegExp(`^${key}=.*$`, 'm');
-    if (regex.test(content)) {
-      content = content.replace(regex, `${key}=${value}`);
-    } else {
-      content += `${content && !content.endsWith('\n') ? '\n' : ''}${key}=${value}\n`;
-    }
-  }
-
-  fs.writeFileSync(envPath, content);
-}
-
 async function setupAuth() {
+  await initDatabase();
+
   console.log('Setup authentication credentials\n');
 
   const username = (await question('Username (default: admin): ')).trim() || 'admin';
@@ -40,17 +23,14 @@ async function setupAuth() {
   }
 
   const hash = bcrypt.hashSync(password, 12);
-  const secret = crypto.randomBytes(32).toString('hex');
 
-  const envPath = path.join(process.cwd(), '.env');
-  updateEnvFile(envPath, {
-    AUTH_USERNAME: username,
-    AUTH_PASSWORD_HASH: hash,
-    SESSION_SECRET: secret,
-  });
+  await setSetting('auth_username', username);
+  await setSetting('auth_password_hash', hash);
 
-  console.log(`\nCredentials saved to ${envPath}`);
+  console.log(`\nCredentials saved to database`);
   console.log(`Username: ${username}`);
+
+  await db.destroy();
 }
 
 async function hashPassword() {

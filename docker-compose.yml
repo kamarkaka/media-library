@@ -8,7 +8,4 @@ services:
       - /path/to/your/videos:/media:ro
     environment:
       - DB_PATH=/data/library.db
-      - AUTH_USERNAME=admin
-      - AUTH_PASSWORD_HASH=
-      - SESSION_SECRET=
     restart: unless-stopped
