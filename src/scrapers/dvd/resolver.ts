@@ -1,7 +1,7 @@
 import { Browser } from 'puppeteer-core';
 import * as cheerio from 'cheerio';
 import { launchBrowser, createPage } from '../base/browser';
-import { config } from '../../config';
+import { SEARCH_URL_PREFIX, SOURCE_URL_PREFIX } from './config';
 
 let sharedBrowser: Browser | null = null;
 
@@ -19,7 +19,7 @@ export async function closeResolver(): Promise<void> {
 }
 
 export async function resolveSourceUrl(filename: string): Promise<string | null> {
-  if (!config.searchUrlPrefix) {
+  if (!SEARCH_URL_PREFIX) {
     console.log(`[resolver] No SEARCH_URL_PREFIX configured, skipping`);
     return null;
   }
@@ -30,7 +30,7 @@ export async function resolveSourceUrl(filename: string): Promise<string | null>
     return null;
   }
 
-  const searchUrl = config.searchUrlPrefix + searchCode;
+  const searchUrl = SEARCH_URL_PREFIX + searchCode;
   console.log(`[resolver] Searching for "${searchCode}" at ${searchUrl}`);
 
   const browser = await getBrowser();
@@ -61,7 +61,7 @@ export async function resolveSourceUrl(filename: string): Promise<string | null>
         const link = card.find('a.video-link');
         const href = link.attr('href');
         if (href) {
-          sourceUrl = href.startsWith('http') ? href : config.sourceUrlPrefix + href;
+          sourceUrl = href.startsWith('http') ? href : SOURCE_URL_PREFIX + href;
           console.log(`[resolver] Found source URL: ${sourceUrl}`);
           return false; // break
         }
