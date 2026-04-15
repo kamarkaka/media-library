@@ -79,6 +79,7 @@ export class DvdScraper extends PuppeteerScraper {
           coverImage,
         },
         debug: {
+          hasDescription: true,
           hasH1: !!h1,
           h1Text: h1?.textContent?.trim() || null,
           code,
@@ -87,6 +88,7 @@ export class DvdScraper extends PuppeteerScraper {
           genreCount: desc.querySelectorAll('a[href*="/categories/"]').length,
           castCount: desc.querySelectorAll('a[href*="/casts/"]').length,
           imgCount: desc.querySelectorAll('img').length,
+          descriptionPreview: desc.innerHTML.substring(0, 500),
         },
       };
     });
