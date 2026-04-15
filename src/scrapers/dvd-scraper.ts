@@ -55,24 +55,13 @@ export class DvdScraper extends PuppeteerScraper {
       }
 
       let coverImage: string | undefined;
-      let coverImgDebug: Record<string, string> | null = null;
       if (code) {
         const imgs = desc.querySelectorAll('img');
         for (const img of imgs) {
           if (img.alt?.includes(code)) {
-            // Log all attributes to find the real URL
-            coverImgDebug = {};
-            for (const attr of img.attributes) {
-              coverImgDebug[attr.name] = attr.value.substring(0, 200);
-            }
-            // Pick the first non-data-URI URL
-            const candidates = [
-              img.getAttribute('data-src'),
-              img.getAttribute('data-original'),
-              img.getAttribute('data-lazy-src'),
-              img.src,
-            ];
-            coverImage = candidates.find(u => u && !u.startsWith('data:')) || undefined;
+            const dataSrc = img.getAttribute('data-src');
+            coverImage = (dataSrc && !dataSrc.startsWith('data:')) ? dataSrc
+              : (!img.src.startsWith('data:') ? img.src : undefined);
             break;
           }
         }
@@ -102,7 +91,6 @@ export class DvdScraper extends PuppeteerScraper {
           castCount: desc.querySelectorAll('a[href*="/casts/"]').length,
           imgCount: desc.querySelectorAll('img').length,
           descriptionPreview: desc.innerHTML.substring(0, 500),
-          coverImgAttributes: coverImgDebug,
         },
       };
     });
