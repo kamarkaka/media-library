@@ -78,6 +78,10 @@
     var bodyKey = type === 'scan' ? 'fullScan' : 'fullScrape';
     var body = {};
     body[bodyKey] = isFull;
+    if (type === 'scrape') {
+      var scraperSelect = document.getElementById('scraper-type');
+      if (scraperSelect) body.scraperType = scraperSelect.value;
+    }
 
     var busyText = type === 'scan' ? 'Scanning...' : 'Scraping...';
     var defaultText = type === 'scan' ? 'Scan Library' : 'Scrape Metadata';

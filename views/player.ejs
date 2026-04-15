@@ -95,14 +95,6 @@
           <input type="text" name="source_url" value="<%= video.source_url || '' %>" placeholder="https://..."
             class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
         </div>
-        <div>
-          <label class="block text-gray-500 mb-1">Scraper</label>
-          <select name="scraper_type"
-            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
-            <option value="">Default</option>
-            <option value="dvd" <%= video.scraper_type === 'dvd' ? 'selected' : '' %>>DVD</option>
-          </select>
-        </div>
         <%- include('partials/video-tags', { tagType: 'genres', tagLabel: 'Genres', tagItems: genres, tagPlaceholder: 'Add genre...' }) %>
         <%- include('partials/video-tags', { tagType: 'cast', tagLabel: 'Cast', tagItems: cast, tagPlaceholder: 'Add cast member...' }) %>
       </div>

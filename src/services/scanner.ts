@@ -86,10 +86,10 @@ export function startScan(fullScan: boolean): void {
   spawnWorker('scan-worker', { fullScan }, scanProgress);
 }
 
-export function startScrape(fullScrape: boolean): void {
+export function startScrape(fullScrape: boolean, scraperType?: string): void {
   if (scrapeProgress.status === 'scanning') return;
   Object.assign(scrapeProgress, createProgress());
   scrapeProgress.status = 'scanning';
   scrapeProgress.step = 'Starting scrape...';
-  spawnWorker('scrape-worker', { fullScrape }, scrapeProgress);
+  spawnWorker('scrape-worker', { fullScrape, scraperType }, scrapeProgress);
 }

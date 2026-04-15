@@ -5,7 +5,7 @@ import { getScraper } from '../scrapers';
 import { resolveSourceUrl, closeResolver } from '../scrapers/source-url-resolver';
 import type { ScanProgress } from './scanner';
 
-const { fullScrape } = workerData as { fullScrape: boolean };
+const { fullScrape, scraperType } = workerData as { fullScrape: boolean; scraperType?: string };
 
 const db = knexInit({
   client: 'better-sqlite3',
@@ -40,18 +40,18 @@ async function run(): Promise<void> {
     await db.raw('PRAGMA journal_mode = WAL');
     await db.raw('PRAGMA foreign_keys = ON');
 
-    const defaultScraper = getScraper();
+    const scraper = getScraper(scraperType);
+    console.log(`[scrape] Using scraper: ${scraperType || 'default'}`);
 
     // Get videos to scrape
     let videos: any[];
     if (fullScrape) {
-      videos = await db('videos').select('id', 'filename', 'scraper_type', 'source_url');
+      videos = await db('videos').select('id', 'filename', 'source_url');
       console.log(`[scrape] Full scrape — ${videos.length} videos`);
     } else {
-      // Quick scrape: videos missing name or code
       videos = await db('videos')
         .whereNull('name').orWhereNull('code').orWhere('name', '').orWhere('code', '')
-        .select('id', 'filename', 'scraper_type', 'source_url');
+        .select('id', 'filename', 'source_url');
       console.log(`[scrape] Quick scrape — ${videos.length} videos with missing info`);
     }
 
@@ -79,8 +79,7 @@ async function run(): Promise<void> {
           }
         }
 
-        const scraper = video.scraper_type ? getScraper(video.scraper_type) : defaultScraper;
-        console.log(`[scrape] ${label} ${video.filename} — scraper=${video.scraper_type || 'default'}, source_url=${sourceUrl || 'none'}`);
+        console.log(`[scrape] ${label} ${video.filename} — source_url=${sourceUrl || 'none'}`);
 
         const metadata = await scraper.scrape(video.filename, sourceUrl);
         if (metadata) {

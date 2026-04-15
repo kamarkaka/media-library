@@ -31,7 +31,8 @@ router.post('/scrape', (req, res) => {
     return res.json({ success: false, message: 'Scrape already in progress' });
   }
   const fullScrape = req.body?.fullScrape === true;
-  startScrape(fullScrape);
+  const scraperType = req.body?.scraperType || undefined;
+  startScrape(fullScrape, scraperType);
   res.json({ success: true, message: fullScrape ? 'Full scrape started' : 'Quick scrape started' });
 });
 
