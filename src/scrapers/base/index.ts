@@ -4,6 +4,12 @@ import { Scraper } from './types';
 import { NoOpScraper } from './noop';
 import { config } from '../../config';
 
+const VALID_NAME = /^[a-z0-9_-]+$/i;
+
+function validateScraperName(name: string): boolean {
+  return VALID_NAME.test(name);
+}
+
 /**
  * Dynamically load a scraper by name.
  * Expects src/scrapers/<name>/scraper.ts to export createScraper(): Scraper
@@ -11,6 +17,10 @@ import { config } from '../../config';
 export function getScraper(type?: string | null): Scraper {
   const scraperType = type || config.scraperType;
   if (!scraperType || scraperType === 'noop') {
+    return new NoOpScraper();
+  }
+  if (!validateScraperName(scraperType)) {
+    console.error(`[scraper] Invalid scraper name: "${scraperType}"`);
     return new NoOpScraper();
   }
 
@@ -37,6 +47,10 @@ export function getResolver(type?: string | null): {
 } | null {
   const scraperType = type || config.scraperType;
   if (!scraperType || scraperType === 'noop') return null;
+  if (!validateScraperName(scraperType)) {
+    console.error(`[scraper] Invalid scraper name: "${scraperType}"`);
+    return null;
+  }
 
   try {
     const resolverModule = require(`../${scraperType}/resolver`);
