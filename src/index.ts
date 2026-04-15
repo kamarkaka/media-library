@@ -13,7 +13,6 @@ import libraryRouter from './routes/library';
 import playerRouter from './routes/player';
 import settingsRouter from './routes/settings';
 import tagsRouter from './routes/tags';
-import scraperRouter from './routes/scraper';
 import apiRouter from './routes/api';
 
 async function main() {
@@ -89,7 +88,6 @@ async function main() {
   app.use('/player', playerRouter);
   app.use('/settings', settingsRouter);
   app.use(tagsRouter);
-  app.use(scraperRouter);
   app.use('/api', apiRouter);
 
   app.listen(config.port, () => {

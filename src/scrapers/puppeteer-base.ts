@@ -1,6 +1,6 @@
 import { Browser, Page } from 'puppeteer-core';
 import { Scraper, ScrapedMetadata } from './types';
-import { launchBrowser, createPage, loadCookies, saveCookies } from './browser';
+import { launchBrowser, createPage } from './browser';
 
 export abstract class PuppeteerScraper implements Scraper {
   private browser: Browser | null = null;
@@ -14,14 +14,7 @@ export abstract class PuppeteerScraper implements Scraper {
 
   protected async newPage(): Promise<Page> {
     const browser = await this.getBrowser();
-    const page = await createPage(browser);
-    await loadCookies(page, this.scraperType);
-    return page;
-  }
-
-  protected async closePage(page: Page): Promise<void> {
-    await saveCookies(page, this.scraperType);
-    await page.close();
+    return await createPage(browser);
   }
 
   async close(): Promise<void> {
@@ -46,7 +39,7 @@ export abstract class PuppeteerScraper implements Scraper {
       console.error(`[scraper:${this.scraperType}] Failed to scrape ${filename}:`, err);
       return null;
     } finally {
-      await this.closePage(page);
+      await page.close();
     }
   }
 }
