@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import knexInit from 'knex';
 import { config } from '../config';
 import { getScraper } from '../scrapers';
-import { resolveSourceUrl } from '../scrapers/source-url-resolver';
+import { resolveSourceUrl, closeResolver } from '../scrapers/source-url-resolver';
 import type { ScanProgress } from './scanner';
 
 const { fullRescan } = workerData as { fullRescan: boolean };
@@ -301,6 +301,7 @@ async function run(): Promise<void> {
     console.error('[scan] Fatal error:', err);
     progress({ status: 'error', step: '', error: err.message });
   } finally {
+    await closeResolver();
     await db.destroy();
   }
 }
