@@ -1,6 +1,7 @@
 import { Browser, Page } from 'puppeteer-core';
 import { Scraper, ScrapedMetadata } from './types';
 import { launchBrowser, createPage } from './browser';
+import { config } from '../config';
 
 export abstract class PuppeteerScraper implements Scraper {
   private browser: Browser | null = null;
@@ -28,7 +29,10 @@ export abstract class PuppeteerScraper implements Scraper {
   protected abstract extractMetadata(page: Page): Promise<ScrapedMetadata | null>;
 
   async scrape(filename: string, sourceUrl?: string): Promise<ScrapedMetadata | null> {
-    const url = sourceUrl || this.buildUrl(filename);
+    let url = sourceUrl || this.buildUrl(filename);
+    if (url && !url.startsWith('http') && config.sourceUrlPrefix) {
+      url = config.sourceUrlPrefix + url;
+    }
     if (!url) {
       console.log(`[scraper:${this.scraperType}] No URL for ${filename}, skipping`);
       return null;
