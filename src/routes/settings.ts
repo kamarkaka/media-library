@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db';
+import { listScrapers } from '../scrapers/base';
 
 const router = Router();
 
@@ -11,6 +12,7 @@ router.get('/', async (req, res) => {
     title: 'Settings',
     paths,
     videoCount: countResult?.count || 0,
+    scrapers: listScrapers(),
   });
 });
 

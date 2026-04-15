@@ -1,8 +1,7 @@
 import { parentPort, workerData } from 'worker_threads';
 import knexInit from 'knex';
 import { config } from '../config';
-import { getScraper } from '../scrapers/base';
-import { resolveSourceUrl, closeResolver } from '../scrapers/dvd/resolver';
+import { getScraper, getResolver } from '../scrapers/base';
 import type { ScanProgress } from './scanner';
 
 const { fullScrape, scraperType } = workerData as { fullScrape: boolean; scraperType?: string };
@@ -36,14 +35,14 @@ async function syncRelation(
 }
 
 async function run(): Promise<void> {
+  const scraper = getScraper(scraperType);
+  const resolver = getResolver(scraperType);
+  console.log(`[scrape] Using scraper: ${scraperType || 'default'}, resolver: ${resolver ? 'loaded' : 'none'}`);
+
   try {
     await db.raw('PRAGMA journal_mode = WAL');
     await db.raw('PRAGMA foreign_keys = ON');
 
-    const scraper = getScraper(scraperType);
-    console.log(`[scrape] Using scraper: ${scraperType || 'default'}`);
-
-    // Get videos to scrape
     let videos: any[];
     if (fullScrape) {
       videos = await db('videos').select('id', 'filename', 'source_url');
@@ -67,11 +66,10 @@ async function run(): Promise<void> {
       try {
         let sourceUrl = video.source_url;
 
-        // Resolve source URL if not set
-        if (!sourceUrl) {
+        if (!sourceUrl && resolver) {
           progress({ step: 'Resolving source URL' });
           console.log(`[scrape] ${label} ${video.filename} — resolving source URL`);
-          const resolved = await resolveSourceUrl(video.filename);
+          const resolved = await resolver.resolveSourceUrl(video.filename);
           if (resolved) {
             sourceUrl = resolved;
             await db('videos').where('id', video.id).update({ source_url: resolved });
@@ -127,7 +125,7 @@ async function run(): Promise<void> {
     console.error('[scrape] Fatal error:', err);
     progress({ status: 'error', step: '', error: err.message });
   } finally {
-    await closeResolver();
+    if (resolver) await resolver.closeResolver();
     await db.destroy();
   }
 }

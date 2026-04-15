@@ -103,3 +103,5 @@ export class DvdScraper extends PuppeteerScraper {
     return { name, code, releaseDate, director, maker, genres, cast, coverImage };
   }
 }
+
+export function createScraper() { return new DvdScraper(); }
