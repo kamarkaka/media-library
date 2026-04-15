@@ -1,4 +1,5 @@
 import { Browser } from 'puppeteer-core';
+import * as cheerio from 'cheerio';
 import { launchBrowser, createPage } from './browser';
 import { config } from '../config';
 
@@ -38,28 +39,36 @@ export async function resolveSourceUrl(filename: string): Promise<string | null>
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
     console.log(`[resolver] Page loaded — title: "${await page.title()}", url: ${page.url()}`);
 
-    const sourceUrl = await page.evaluate((code: string) => {
-      const search = document.getElementById('search');
-      if (!search) return null;
+    const searchHtml = await page.evaluate('document.getElementById("search")?.innerHTML || ""');
+    if (!searchHtml) {
+      console.warn(`[resolver] #search element not found or empty`);
+      return null;
+    }
+    console.log(`[resolver] Got #search HTML (${(searchHtml as string).length} chars)`);
 
-      const titles = search.querySelectorAll('p.card-text.title.vid-title');
-      for (const title of titles) {
-        if (title.textContent?.trim().startsWith(code)) {
-          let el: HTMLElement | null = title as HTMLElement;
-          while (el && !el.classList.contains('card-container')) {
-            el = el.parentElement;
-          }
-          if (!el) continue;
-          const link = el.querySelector('a.video-link') as HTMLAnchorElement | null;
-          if (link?.href) return link.href;
+    const $ = cheerio.load(searchHtml as string);
+
+    let sourceUrl: string | null = null;
+    $('p.card-text.title.vid-title').each((_, el) => {
+      const title = $(el).text().trim();
+      console.log(`[resolver] Found title: "${title}"`);
+      if (title.startsWith(searchCode)) {
+        const card = $(el).closest('.card-container');
+        if (!card.length) {
+          console.warn(`[resolver] Matched title but no .card-container parent found`);
+          return;
+        }
+        const link = card.find('a.video-link');
+        const href = link.attr('href');
+        if (href) {
+          sourceUrl = href;
+          console.log(`[resolver] Found source URL: ${sourceUrl}`);
+          return false; // break
         }
       }
-      return null;
-    }, searchCode);
+    });
 
-    if (sourceUrl) {
-      console.log(`[resolver] Found source URL: ${sourceUrl}`);
-    } else {
+    if (!sourceUrl) {
       console.warn(`[resolver] No matching result found for "${searchCode}"`);
     }
 
