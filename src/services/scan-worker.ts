@@ -5,11 +5,9 @@ import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import knexInit from 'knex';
 import { config } from '../config';
-import { getScraper } from '../scrapers';
-import { resolveSourceUrl, closeResolver } from '../scrapers/source-url-resolver';
 import type { ScanProgress } from './scanner';
 
-const { fullRescan } = workerData as { fullRescan: boolean };
+const { fullScan } = workerData as { fullScan: boolean };
 
 const db = knexInit({
   client: 'better-sqlite3',
@@ -124,33 +122,13 @@ function formatVideoSummary(info: VideoInfo): string {
   return `${dur}, ${res}, ${info.videoCodec || '?'}`;
 }
 
-async function syncRelation(
-  videoId: string,
-  items: string[],
-  lookupTable: string,
-  joinTable: string,
-  foreignKey: string,
-): Promise<void> {
-  await db(joinTable).where('video_id', videoId).del();
-  for (const name of items) {
-    let row: any = await db(lookupTable).where('name', name).first();
-    if (!row) {
-      const [id] = await db(lookupTable).insert({ name });
-      row = { id };
-    }
-    await db(joinTable).insert({ video_id: videoId, [foreignKey]: row.id }).onConflict(['video_id', foreignKey]).ignore();
-  }
-}
-
 async function run(): Promise<void> {
   try {
     await db.raw('PRAGMA journal_mode = WAL');
     await db.raw('PRAGMA foreign_keys = ON');
 
-    const defaultScraper = getScraper();
-
     progress({ step: 'Discovering files...' });
-    console.log(`[scan] Starting library scan (fullRescan=${fullRescan})`);
+    console.log(`[scan] Starting library scan (fullScan=${fullScan})`);
 
     const libraryPaths = await db('library_paths').select('path');
     const allFiles: string[] = [];
@@ -161,15 +139,15 @@ async function run(): Promise<void> {
       }
     }
 
-    const existingVideos = await db('videos').select('id', 'full_path', 'length', 'scraper_type', 'source_url');
-    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length, scraper_type: v.scraper_type, source_url: v.source_url }]));
+    const existingVideos = await db('videos').select('id', 'full_path', 'length');
+    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length }]));
     const allFilesSet = new Set(allFiles);
     const staleIds = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path)).map((v: any) => v.id);
 
     const newFiles = allFiles.filter((f) => !existingByPath.has(f));
-    const filesToProcess = fullRescan ? allFiles : newFiles;
+    const filesToProcess = fullScan ? allFiles : newFiles;
     console.log(`[scan] Found ${allFiles.length} files on disk (${newFiles.length} new, ${allFiles.length - newFiles.length} existing, ${staleIds.length} stale)`);
-    if (!fullRescan && filesToProcess.length < allFiles.length) {
+    if (!fullScan && filesToProcess.length < allFiles.length) {
       console.log(`[scan] Quick scan — processing ${filesToProcess.length} new files only`);
     }
 
@@ -179,8 +157,6 @@ async function run(): Promise<void> {
 
     progress({ total: filesToProcess.length });
 
-    await new Promise((r) => setTimeout(r, 1000));
-
     for (const filePath of filesToProcess) {
       const filename = path.basename(filePath);
       const existing = existingByPath.get(filePath);
@@ -189,11 +165,10 @@ async function run(): Promise<void> {
       progress({ currentFile: filename });
 
       try {
-        let videoId: string;
         if (isNew) {
           progress({ step: 'Adding to database' });
           console.log(`[scan] ${label} ${filename} — adding to database`);
-          videoId = uuidv4();
+          const videoId = uuidv4();
           const info = getVideoInfo(filePath);
           await db('videos').insert({
             id: videoId,
@@ -202,76 +177,15 @@ async function run(): Promise<void> {
             ...videoInfoColumns(info),
           });
           console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
+          added++;
         } else {
-          videoId = existing.id;
-          progress({ step: 'Updating database' });
-          console.log(`[scan] ${label} ${filename} — already in database, updating`);
-
-          if (fullRescan || existing.length == null) {
+          if (fullScan || existing.length == null) {
             progress({ step: 'Probing video info' });
             console.log(`[scan] ${label} ${filename} — probing video info`);
             const info = getVideoInfo(filePath);
-            await db('videos').where('id', videoId).update(videoInfoColumns(info));
+            await db('videos').where('id', existing.id).update(videoInfoColumns(info));
             console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
           }
-        }
-
-        if (isNew || fullRescan) {
-          progress({ step: 'Scraping metadata' });
-          console.log(`[scan] ${label} ${filename} — scraping metadata`);
-        }
-        const scraperType = existing?.scraper_type || 'noop';
-        let sourceUrl = existing?.source_url;
-
-        // Resolve source URL if not already set
-        if ((isNew || fullRescan) && !sourceUrl) {
-          progress({ step: 'Resolving source URL' });
-          console.log(`[scan] ${label} ${filename} — resolving source URL`);
-          const resolved = await resolveSourceUrl(filename);
-          if (resolved) {
-            sourceUrl = resolved;
-            await db('videos').where('id', videoId).update({ source_url: resolved });
-            console.log(`[scan] ${label} ${filename} — resolved source URL: ${resolved}`);
-          }
-        }
-
-        const scraper = existing?.scraper_type ? getScraper(existing.scraper_type) : defaultScraper;
-        console.log(`[scan] ${label} ${filename} — scraper=${scraperType}, source_url=${sourceUrl || 'none'}, willScrape=${isNew || fullRescan}`);
-        const metadata = (isNew || fullRescan) ? await scraper.scrape(filename, sourceUrl) : null;
-        if (metadata) {
-          const updates: Record<string, any> = {};
-          if (metadata.code) updates.code = metadata.code;
-          if (metadata.name) updates.name = metadata.name;
-          if (metadata.releaseDate) updates.release_date = metadata.releaseDate;
-          if (metadata.length) updates.length = metadata.length;
-          if (metadata.director) updates.director = metadata.director;
-          if (metadata.maker) updates.maker = metadata.maker;
-          if (metadata.label) updates.label = metadata.label;
-          if (metadata.coverImage) updates.cover_image = metadata.coverImage;
-          if (Object.keys(updates).length > 0) {
-            updates.updated_at = new Date().toISOString();
-            console.log(`[scan] ${label} ${filename} — applying metadata updates:`, Object.keys(updates).join(', '));
-            await db('videos').where('id', videoId).update(updates);
-          } else {
-            console.log(`[scan] ${label} ${filename} — metadata returned but no fields to update`);
-          }
-
-          if (metadata.id && metadata.id !== videoId) {
-            await db('videos').where('id', videoId).update({ id: metadata.id });
-            videoId = metadata.id;
-          }
-
-          if (metadata.genres) {
-            await syncRelation(videoId, metadata.genres, 'genres', 'video_genres', 'genre_id');
-          }
-          if (metadata.cast) {
-            await syncRelation(videoId, metadata.cast, 'cast_members', 'video_cast', 'cast_id');
-          }
-        }
-
-        if (isNew) {
-          added++;
-        } else {
           updated++;
         }
         console.log(`[scan] ${label} ${filename} — done (${isNew ? 'added' : 'updated'})`);
@@ -295,13 +209,11 @@ async function run(): Promise<void> {
     }
 
     console.log(`[scan] Complete — added ${added}, updated ${updated}, removed ${removed}`);
-    await new Promise((r) => setTimeout(r, 1000));
     progress({ status: 'done', step: '', currentFile: '', added, updated, removed });
   } catch (err: any) {
     console.error('[scan] Fatal error:', err);
     progress({ status: 'error', step: '', error: err.message });
   } finally {
-    await closeResolver();
     await db.destroy();
   }
 }

@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { startScan, getScanProgress, resetScanProgress } from '../../services/scanner';
+import {
+  startScan, startScrape,
+  getScanProgress, getScrapeProgress,
+  resetScanProgress, resetScrapeProgress,
+} from '../../services/scanner';
 
 const router = Router();
 
@@ -8,21 +12,34 @@ router.post('/scan', (req, res) => {
   if (progress.status === 'scanning') {
     return res.json({ success: false, message: 'Scan already in progress' });
   }
-
-  const fullRescan = req.body?.fullRescan === true;
-  startScan(fullRescan);
-
-  res.json({ success: true, message: fullRescan ? 'Full rescan started' : 'Scan started' });
+  const fullScan = req.body?.fullScan === true;
+  startScan(fullScan);
+  res.json({ success: true, message: fullScan ? 'Full scan started' : 'Quick scan started' });
 });
 
 router.get('/scan/status', (_req, res) => {
   const progress = getScanProgress();
   res.json(progress);
-
-  // Once a terminal state has been read by the client, reset to idle
-  // so stale results don't show on next page load
   if (progress.status === 'done' || progress.status === 'error') {
     resetScanProgress();
+  }
+});
+
+router.post('/scrape', (req, res) => {
+  const progress = getScrapeProgress();
+  if (progress.status === 'scanning') {
+    return res.json({ success: false, message: 'Scrape already in progress' });
+  }
+  const fullScrape = req.body?.fullScrape === true;
+  startScrape(fullScrape);
+  res.json({ success: true, message: fullScrape ? 'Full scrape started' : 'Quick scrape started' });
+});
+
+router.get('/scrape/status', (_req, res) => {
+  const progress = getScrapeProgress();
+  res.json(progress);
+  if (progress.status === 'done' || progress.status === 'error') {
+    resetScrapeProgress();
   }
 });
 

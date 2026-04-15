@@ -2,8 +2,6 @@
   var addForm = document.getElementById('add-path-form');
   var pathInput = document.getElementById('path-input');
   var pathList = document.getElementById('path-list');
-  var scanBtn = document.getElementById('scan-btn');
-  var scanStatus = document.getElementById('scan-status');
   var noPathsMsg = document.getElementById('no-paths-msg');
   var passwordForm = document.getElementById('password-form');
   var passwordStatus = document.getElementById('password-status');
@@ -52,45 +50,70 @@
       .catch(function (err) { alert('Failed: ' + err.message); });
   };
 
-  // Scan library (fire-and-forget, progress shown via toast)
-  window.scanLibrary = function () {
-    if (scanBtn.disabled) return;
-    window.setScanButtonBusy(true);
-    scanStatus.textContent = '';
+  // --- Scan / Scrape jobs ---
+  function setButtonBusy(btnId, busy, busyText, defaultText) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.textContent = busy ? busyText : defaultText;
+    if (busy) {
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+  }
 
-    // Start polling immediately — don't wait for POST response
+  window.startJob = function (type) {
+    var btnId = type + '-btn';
+    var statusId = type + '-status';
+    var fullCheckId = 'full-' + type;
+    var btn = document.getElementById(btnId);
+    var statusEl = document.getElementById(statusId);
+    var fullCheck = document.getElementById(fullCheckId);
+
+    if (btn.disabled) return;
+
+    var isFull = fullCheck ? fullCheck.checked : false;
+    var endpoint = '/api/library/' + type;
+    var bodyKey = type === 'scan' ? 'fullScan' : 'fullScrape';
+    var body = {};
+    body[bodyKey] = isFull;
+
+    var busyText = type === 'scan' ? 'Scanning...' : 'Scraping...';
+    var defaultText = type === 'scan' ? 'Scan Library' : 'Scrape Metadata';
+
+    setButtonBusy(btnId, true, busyText, defaultText);
+    statusEl.textContent = '';
+
     if (window.startScanPolling) {
-      window.startScanPolling();
+      window.startScanPolling(type);
     }
 
-    var fullRescan = document.getElementById('full-rescan');
-    fetch('/api/library/scan', {
+    fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullRescan: fullRescan ? fullRescan.checked : false }),
+      body: JSON.stringify(body),
     })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data.success) {
-          scanStatus.textContent = data.message || 'Scan already in progress';
-          scanStatus.className = 'text-sm text-yellow-400';
+          statusEl.textContent = data.message || 'Already in progress';
+          statusEl.className = 'text-sm text-yellow-400';
         }
       })
       .catch(function (err) {
-        scanStatus.textContent = 'Failed to start scan: ' + err.message;
-        scanStatus.className = 'text-sm text-red-400';
-        window.setScanButtonBusy(false);
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+        setButtonBusy(btnId, false, busyText, defaultText);
       });
   };
 
+  // Expose for scan-toast.js
   window.setScanButtonBusy = function (busy) {
-    scanBtn.disabled = busy;
-    scanBtn.textContent = busy ? 'Scan in progress...' : 'Scan Library';
-    if (busy) {
-      scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    } else {
-      scanBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
+    setButtonBusy('scan-btn', busy, 'Scanning...', 'Scan Library');
+  };
+  window.setScrapeButtonBusy = function (busy) {
+    setButtonBusy('scrape-btn', busy, 'Scraping...', 'Scrape Metadata');
   };
 
   // Change password

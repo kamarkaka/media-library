@@ -12,9 +12,10 @@
   var CHECK_SVG = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />';
 
   var polling = false;
+  var activeJobType = null; // 'scan' or 'scrape'
   var hideTimer = null;
   var idleRetries = 0;
-  var maxIdleRetries = 10; // keep polling up to 5s if still idle (scan hasn't started yet)
+  var maxIdleRetries = 10;
 
   function setSpinnerDone() {
     if (!toastSpinner) return;
@@ -32,9 +33,11 @@
     toastSpinner.removeAttribute('stroke');
   }
 
-  function stopScanPolling() {
+  function stopPolling() {
     polling = false;
-    if (window.setScanButtonBusy) window.setScanButtonBusy(false);
+    var setBusy = activeJobType === 'scrape' ? window.setScrapeButtonBusy : window.setScanButtonBusy;
+    if (setBusy) setBusy(false);
+    activeJobType = null;
   }
 
   function show() {
@@ -58,7 +61,10 @@
   function poll() {
     if (!polling) return;
 
-    fetch('/api/library/scan/status')
+    var statusUrl = '/api/library/' + activeJobType + '/status';
+    var label = activeJobType === 'scrape' ? 'Scrape' : 'Scan';
+
+    fetch(statusUrl)
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!polling) return;
@@ -69,9 +75,9 @@
           var pct = data.total > 0 ? Math.round(data.processed / data.total * 100) : 0;
 
           if (data.total > 0) {
-            toastCount.textContent = 'Processing ' + data.processed + ' / ' + data.total + ' files';
+            toastCount.textContent = label + ': ' + data.processed + ' / ' + data.total;
           } else {
-            toastCount.textContent = data.step || 'Scanning...';
+            toastCount.textContent = data.step || label + '...';
           }
 
           toastFile.textContent = data.currentFile || '';
@@ -79,34 +85,37 @@
           toastBar.style.width = pct + '%';
           setTimeout(poll, 500);
         } else if (data.status === 'done') {
-          toastCount.textContent = 'Scan complete';
-          toastFile.textContent = 'Added ' + data.added + ', updated ' + data.updated + ', removed ' + data.removed;
+          toastCount.textContent = label + ' complete';
+          var summary = [];
+          if (data.added) summary.push('Added ' + data.added);
+          if (data.updated) summary.push('Updated ' + data.updated);
+          if (data.removed) summary.push('Removed ' + data.removed);
+          toastFile.textContent = summary.join(', ') || 'No changes';
           toastStep.textContent = '';
           toastBar.style.width = '100%';
           setSpinnerDone();
           show();
-          stopScanPolling();
+          stopPolling();
           hideTimer = setTimeout(hide, 5000);
         } else if (data.status === 'error') {
-          toastCount.textContent = 'Scan failed';
+          toastCount.textContent = label + ' failed';
           toastFile.textContent = data.error || 'Unknown error';
           toastStep.textContent = '';
           toastBar.style.width = '0%';
           show();
-          stopScanPolling();
+          stopPolling();
           hideTimer = setTimeout(hide, 8000);
         } else {
-          // idle — scan may not have started yet, retry a few times
           if (idleRetries < maxIdleRetries) {
             idleRetries++;
             show();
-            toastCount.textContent = 'Starting scan...';
+            toastCount.textContent = 'Starting ' + label.toLowerCase() + '...';
             toastFile.textContent = '';
             toastStep.textContent = '';
             toastBar.style.width = '0%';
             setTimeout(poll, 500);
           } else {
-            stopScanPolling();
+            stopPolling();
             hide();
           }
         }
@@ -116,13 +125,15 @@
       });
   }
 
-  window.startScanPolling = function () {
+  // type: 'scan' or 'scrape'
+  window.startScanPolling = function (type) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    activeJobType = type || 'scan';
     idleRetries = 0;
-    if (window.setScanButtonBusy) window.setScanButtonBusy(true);
+    var setBusy = activeJobType === 'scrape' ? window.setScrapeButtonBusy : window.setScanButtonBusy;
+    if (setBusy) setBusy(true);
     setSpinnerActive();
-    // Show toast immediately before any network round-trip
-    toastCount.textContent = 'Starting scan...';
+    toastCount.textContent = 'Starting ' + (activeJobType === 'scrape' ? 'scrape' : 'scan') + '...';
     toastFile.textContent = '';
     toastStep.textContent = '';
     toastBar.style.width = '0%';
@@ -133,13 +144,17 @@
     }
   };
 
-  // On page load, resume polling if a scan is active
-  fetch('/api/library/scan/status')
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.status === 'scanning') {
-        window.startScanPolling();
-      }
-    })
-    .catch(function () {});
+  // On page load, resume polling if a job is active
+  function checkActiveJob(type) {
+    fetch('/api/library/' + type + '/status')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.status === 'scanning') {
+          window.startScanPolling(type);
+        }
+      })
+      .catch(function () {});
+  }
+  checkActiveJob('scan');
+  checkActiveJob('scrape');
 })();

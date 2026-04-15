@@ -13,70 +13,83 @@ export interface ScanProgress {
   error?: string;
 }
 
-const scanProgress: ScanProgress = {
-  status: 'idle',
-  total: 0,
-  processed: 0,
-  currentFile: '',
-  step: '',
-  added: 0,
-  updated: 0,
-  removed: 0,
-};
+function createProgress(): ScanProgress {
+  return {
+    status: 'idle',
+    total: 0,
+    processed: 0,
+    currentFile: '',
+    step: '',
+    added: 0,
+    updated: 0,
+    removed: 0,
+  };
+}
+
+const scanProgress: ScanProgress = createProgress();
+const scrapeProgress: ScanProgress = createProgress();
 
 export function getScanProgress(): ScanProgress {
   return { ...scanProgress };
 }
 
-export function resetScanProgress(): void {
-  scanProgress.status = 'idle';
-  scanProgress.total = 0;
-  scanProgress.processed = 0;
-  scanProgress.currentFile = '';
-  scanProgress.step = '';
-  scanProgress.added = 0;
-  scanProgress.updated = 0;
-  scanProgress.removed = 0;
-  scanProgress.error = undefined;
+export function getScrapeProgress(): ScanProgress {
+  return { ...scrapeProgress };
 }
 
-export function startScan(fullRescan: boolean): void {
-  if (scanProgress.status === 'scanning') return;
+export function resetScanProgress(): void {
+  Object.assign(scanProgress, createProgress());
+}
 
-  resetScanProgress();
-  scanProgress.status = 'scanning';
-  scanProgress.step = 'Starting worker...';
+export function resetScrapeProgress(): void {
+  Object.assign(scrapeProgress, createProgress());
+}
 
+function spawnWorker(workerFile: string, workerData: Record<string, any>, progress: ScanProgress): void {
   const ext = path.extname(__filename);
-  const workerPath = path.join(__dirname, `scan-worker${ext}`);
+  const workerPath = path.join(__dirname, `${workerFile}${ext}`);
 
   let worker: Worker;
   if (ext === '.ts') {
-    // Dev mode: bootstrap tsx CJS hooks so .ts imports resolve without extensions
     const code = [
       `require(${JSON.stringify(require.resolve('tsx/cjs'))})`,
       `require(${JSON.stringify(workerPath)})`,
     ].join(';');
-    worker = new Worker(code, { eval: true, workerData: { fullRescan } });
+    worker = new Worker(code, { eval: true, workerData });
   } else {
-    // Production: compiled JS, no loader needed
-    worker = new Worker(workerPath, { workerData: { fullRescan } });
+    worker = new Worker(workerPath, { workerData });
   }
 
   worker.on('message', (msg: Partial<ScanProgress>) => {
-    Object.assign(scanProgress, msg);
+    Object.assign(progress, msg);
   });
 
   worker.on('error', (err) => {
-    scanProgress.status = 'error';
-    scanProgress.error = err.message;
-    console.error('[scan] Worker error:', err);
+    progress.status = 'error';
+    progress.error = err.message;
+    console.error(`[${workerFile}] Worker error:`, err);
   });
 
   worker.on('exit', (code) => {
-    if (code !== 0 && scanProgress.status === 'scanning') {
-      scanProgress.status = 'error';
-      scanProgress.error = `Worker exited with code ${code}`;
+    if (code !== 0 && progress.status === 'scanning') {
+      progress.status = 'error';
+      progress.error = `Worker exited with code ${code}`;
     }
   });
+}
+
+export function startScan(fullScan: boolean): void {
+  if (scanProgress.status === 'scanning') return;
+  Object.assign(scanProgress, createProgress());
+  scanProgress.status = 'scanning';
+  scanProgress.step = 'Starting scan...';
+  spawnWorker('scan-worker', { fullScan }, scanProgress);
+}
+
+export function startScrape(fullScrape: boolean): void {
+  if (scrapeProgress.status === 'scanning') return;
+  Object.assign(scrapeProgress, createProgress());
+  scrapeProgress.status = 'scanning';
+  scrapeProgress.step = 'Starting scrape...';
+  spawnWorker('scrape-worker', { fullScrape }, scrapeProgress);
 }
