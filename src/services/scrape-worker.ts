@@ -1,8 +1,8 @@
 import { parentPort, workerData } from 'worker_threads';
 import knexInit from 'knex';
 import { config } from '../config';
-import { getScraper } from '../scrapers';
-import { resolveSourceUrl, closeResolver } from '../scrapers/source-url-resolver';
+import { getScraper } from '../scrapers/base';
+import { resolveSourceUrl, closeResolver } from '../scrapers/dvd/resolver';
 import type { ScanProgress } from './scanner';
 
 const { fullScrape, scraperType } = workerData as { fullScrape: boolean; scraperType?: string };

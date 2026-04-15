@@ -1,7 +1,7 @@
 import { Browser, Page } from 'puppeteer-core';
 import { Scraper, ScrapedMetadata } from './types';
 import { launchBrowser, createPage } from './browser';
-import { config } from '../config';
+import { config } from '../../config';
 
 export abstract class PuppeteerScraper implements Scraper {
   private browser: Browser | null = null;

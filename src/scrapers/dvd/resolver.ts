@@ -1,7 +1,7 @@
 import { Browser } from 'puppeteer-core';
 import * as cheerio from 'cheerio';
-import { launchBrowser, createPage } from './browser';
-import { config } from '../config';
+import { launchBrowser, createPage } from '../base/browser';
+import { config } from '../../config';
 
 let sharedBrowser: Browser | null = null;
 

@@ -1,7 +1,7 @@
 import { Page } from 'puppeteer-core';
 import * as cheerio from 'cheerio';
-import { ScrapedMetadata } from './types';
-import { PuppeteerScraper } from './puppeteer-base';
+import { ScrapedMetadata } from '../base/types';
+import { PuppeteerScraper } from '../base/puppeteer-base';
 
 export class DvdScraper extends PuppeteerScraper {
   protected scraperType = 'dvd';
