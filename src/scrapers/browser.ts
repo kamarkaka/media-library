@@ -1,5 +1,8 @@
-import puppeteer from 'puppeteer-core';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { Browser, Page } from 'puppeteer-core';
+
+puppeteer.use(StealthPlugin());
 
 const LAUNCH_ARGS = [
   '--no-sandbox',
