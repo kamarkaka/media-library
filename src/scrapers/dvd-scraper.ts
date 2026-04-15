@@ -28,7 +28,7 @@ export class DvdScraper extends PuppeteerScraper {
     const result = await page.evaluate(() => {
       const desc = document.getElementById('description')!;
 
-      function findByLabel(label: string): string | undefined {
+      const findByLabel = (label: string): string | undefined => {
         const spans = desc.querySelectorAll('span');
         for (const span of spans) {
           if (span.textContent?.includes(label)) {
