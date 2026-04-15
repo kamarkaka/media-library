@@ -40,6 +40,7 @@ export async function initDatabase(): Promise<void> {
       t.text('label').nullable();
       t.text('cover_image').nullable();
       t.text('scraper_type').nullable();
+      t.text('source_url').nullable();
       t.integer('width').nullable();
       t.integer('height').nullable();
       t.text('video_codec').nullable();
@@ -112,6 +113,7 @@ export async function initDatabase(): Promise<void> {
     ['code', 'TEXT'],
     ['name', 'TEXT'],
     ['scraper_type', 'TEXT'],
+    ['source_url', 'TEXT'],
     ['width', 'INTEGER'],
     ['height', 'INTEGER'],
     ['video_codec', 'TEXT'],
