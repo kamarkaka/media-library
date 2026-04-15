@@ -219,8 +219,11 @@ async function run(): Promise<void> {
           progress({ step: 'Scraping metadata' });
           console.log(`[scan] ${label} ${filename} — scraping metadata`);
         }
+        const scraperType = existing?.scraper_type || 'noop';
+        const sourceUrl = existing?.source_url;
         const scraper = existing?.scraper_type ? getScraper(existing.scraper_type) : defaultScraper;
-        const metadata = (isNew || fullRescan) ? await scraper.scrape(filename, existing?.source_url) : null;
+        console.log(`[scan] ${label} ${filename} — scraper=${scraperType}, source_url=${sourceUrl || 'none'}, willScrape=${isNew || fullRescan}`);
+        const metadata = (isNew || fullRescan) ? await scraper.scrape(filename, sourceUrl) : null;
         if (metadata) {
           const updates: Record<string, any> = {};
           if (metadata.code) updates.code = metadata.code;
@@ -233,7 +236,10 @@ async function run(): Promise<void> {
           if (metadata.coverImage) updates.cover_image = metadata.coverImage;
           if (Object.keys(updates).length > 0) {
             updates.updated_at = new Date().toISOString();
+            console.log(`[scan] ${label} ${filename} — applying metadata updates:`, Object.keys(updates).join(', '));
             await db('videos').where('id', videoId).update(updates);
+          } else {
+            console.log(`[scan] ${label} ${filename} — metadata returned but no fields to update`);
           }
 
           if (metadata.id && metadata.id !== videoId) {

@@ -29,12 +29,24 @@ export abstract class PuppeteerScraper implements Scraper {
 
   async scrape(filename: string, sourceUrl?: string): Promise<ScrapedMetadata | null> {
     const url = sourceUrl || this.buildUrl(filename);
-    if (!url) return null;
+    if (!url) {
+      console.log(`[scraper:${this.scraperType}] No URL for ${filename}, skipping`);
+      return null;
+    }
 
+    console.log(`[scraper:${this.scraperType}] Scraping ${url}`);
     const page = await this.newPage();
     try {
+      console.log(`[scraper:${this.scraperType}] Navigating to ${url}`);
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-      return await this.extractMetadata(page);
+      console.log(`[scraper:${this.scraperType}] Page loaded, extracting metadata`);
+      const metadata = await this.extractMetadata(page);
+      if (metadata) {
+        console.log(`[scraper:${this.scraperType}] Extracted:`, JSON.stringify(metadata, null, 2));
+      } else {
+        console.warn(`[scraper:${this.scraperType}] No metadata extracted from ${url}`);
+      }
+      return metadata;
     } catch (err) {
       console.error(`[scraper:${this.scraperType}] Failed to scrape ${url}:`, err);
       return null;
