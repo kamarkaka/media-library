@@ -59,7 +59,7 @@ export class DvdScraper extends PuppeteerScraper {
         const imgs = desc.querySelectorAll('img');
         for (const img of imgs) {
           if (img.alt?.includes(code)) {
-            coverImage = img.src || undefined;
+            coverImage = img.getAttribute('data-src') || img.src || undefined;
             break;
           }
         }
