@@ -61,7 +61,7 @@ export async function resolveSourceUrl(filename: string): Promise<string | null>
         const link = card.find('a.video-link');
         const href = link.attr('href');
         if (href) {
-          sourceUrl = href;
+          sourceUrl = href.startsWith('http') ? href : config.sourceUrlPrefix + href;
           console.log(`[resolver] Found source URL: ${sourceUrl}`);
           return false; // break
         }
