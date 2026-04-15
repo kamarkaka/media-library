@@ -35,7 +35,11 @@
           Scan Library
         </button>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" id="full-scan" class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800">
+          <div class="relative">
+            <input type="checkbox" id="full-scan" class="sr-only peer">
+            <div class="w-9 h-5 bg-gray-600 rounded-full peer-checked:bg-blue-500 transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+          </div>
           <span class="text-sm text-gray-400">Full scan</span>
         </label>
         <span id="scan-status" class="text-sm text-gray-400"></span>
@@ -48,7 +52,11 @@
           Scrape Metadata
         </button>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" id="full-scrape" class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800">
+          <div class="relative">
+            <input type="checkbox" id="full-scrape" class="sr-only peer">
+            <div class="w-9 h-5 bg-gray-600 rounded-full peer-checked:bg-blue-500 transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+          </div>
           <span class="text-sm text-gray-400">Full scrape</span>
         </label>
         <span id="scrape-status" class="text-sm text-gray-400"></span>
