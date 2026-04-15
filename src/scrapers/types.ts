@@ -8,8 +8,10 @@ export interface ScrapedMetadata {
   genres?: string[];
   cast?: string[];
   coverImage?: string;
+  name?: string;
+  code?: string;
 }
 
 export interface Scraper {
-  scrape(filename: string): Promise<ScrapedMetadata | null>;
+  scrape(filename: string, sourceUrl?: string): Promise<ScrapedMetadata | null>;
 }

@@ -160,8 +160,8 @@ async function run(): Promise<void> {
       }
     }
 
-    const existingVideos = await db('videos').select('id', 'full_path', 'length', 'scraper_type');
-    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length, scraper_type: v.scraper_type }]));
+    const existingVideos = await db('videos').select('id', 'full_path', 'length', 'scraper_type', 'source_url');
+    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length, scraper_type: v.scraper_type, source_url: v.source_url }]));
     const allFilesSet = new Set(allFiles);
     const staleIds = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path)).map((v: any) => v.id);
 
@@ -220,9 +220,11 @@ async function run(): Promise<void> {
           console.log(`[scan] ${label} ${filename} — scraping metadata`);
         }
         const scraper = existing?.scraper_type ? getScraper(existing.scraper_type) : defaultScraper;
-        const metadata = (isNew || fullRescan) ? await scraper.scrape(filename) : null;
+        const metadata = (isNew || fullRescan) ? await scraper.scrape(filename, existing?.source_url) : null;
         if (metadata) {
           const updates: Record<string, any> = {};
+          if (metadata.code) updates.code = metadata.code;
+          if (metadata.name) updates.name = metadata.name;
           if (metadata.releaseDate) updates.release_date = metadata.releaseDate;
           if (metadata.length) updates.length = metadata.length;
           if (metadata.director) updates.director = metadata.director;

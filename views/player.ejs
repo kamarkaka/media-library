@@ -100,6 +100,7 @@
           <select name="scraper_type"
             class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
             <option value="">Default</option>
+            <option value="dvd" <%= video.scraper_type === 'dvd' ? 'selected' : '' %>>DVD</option>
           </select>
         </div>
         <%- include('partials/video-tags', { tagType: 'genres', tagLabel: 'Genres', tagItems: genres, tagPlaceholder: 'Add genre...' }) %>

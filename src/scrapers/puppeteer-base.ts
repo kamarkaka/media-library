@@ -25,18 +25,18 @@ export abstract class PuppeteerScraper implements Scraper {
   }
 
   protected abstract buildUrl(filename: string): string | null;
-  protected abstract extractMetadata(page: Page, filename: string): Promise<ScrapedMetadata | null>;
+  protected abstract extractMetadata(page: Page): Promise<ScrapedMetadata | null>;
 
-  async scrape(filename: string): Promise<ScrapedMetadata | null> {
-    const url = this.buildUrl(filename);
+  async scrape(filename: string, sourceUrl?: string): Promise<ScrapedMetadata | null> {
+    const url = sourceUrl || this.buildUrl(filename);
     if (!url) return null;
 
     const page = await this.newPage();
     try {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-      return await this.extractMetadata(page, filename);
+      return await this.extractMetadata(page);
     } catch (err) {
-      console.error(`[scraper:${this.scraperType}] Failed to scrape ${filename}:`, err);
+      console.error(`[scraper:${this.scraperType}] Failed to scrape ${url}:`, err);
       return null;
     } finally {
       await page.close();
