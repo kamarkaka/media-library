@@ -10,12 +10,26 @@ export class DvdScraper extends PuppeteerScraper {
   }
 
   protected async extractMetadata(page: Page): Promise<ScrapedMetadata | null> {
-    return await page.evaluate(() => {
-      const desc = document.getElementById('description');
-      if (!desc) return null;
+    const pageTitle = await page.title();
+    const pageUrl = page.url();
+    console.log(`[scraper:dvd] Page loaded — title: "${pageTitle}", url: ${pageUrl}`);
+
+    const hasDescription = await page.$('#description');
+    if (!hasDescription) {
+      const bodySnippet = await page.evaluate(() => {
+        const body = document.body;
+        return body ? body.innerHTML.substring(0, 500) : '(no body)';
+      });
+      console.warn(`[scraper:dvd] #description element not found. Body preview:\n${bodySnippet}`);
+      return null;
+    }
+    console.log(`[scraper:dvd] Found #description element`);
+
+    const result = await page.evaluate(() => {
+      const desc = document.getElementById('description')!;
 
       function findByLabel(label: string): string | undefined {
-        const spans = desc!.querySelectorAll('span');
+        const spans = desc.querySelectorAll('span');
         for (const span of spans) {
           if (span.textContent?.includes(label)) {
             const parent = span.parentElement;
@@ -52,17 +66,33 @@ export class DvdScraper extends PuppeteerScraper {
       }
 
       return {
-        name: h1?.textContent?.trim() || undefined,
-        code,
-        releaseDate,
-        director: findByLabel('監督'),
-        maker: makerLink?.textContent?.trim() || undefined,
-        genres: Array.from(desc.querySelectorAll('a[href*="/categories/"]'))
-          .map(a => a.textContent?.trim()).filter(Boolean) as string[],
-        cast: Array.from(desc.querySelectorAll('a[href*="/casts/"]'))
-          .map(a => a.textContent?.trim()).filter(Boolean) as string[],
-        coverImage,
+        metadata: {
+          name: h1?.textContent?.trim() || undefined,
+          code,
+          releaseDate,
+          director: findByLabel('監督'),
+          maker: makerLink?.textContent?.trim() || undefined,
+          genres: Array.from(desc.querySelectorAll('a[href*="/categories/"]'))
+            .map(a => a.textContent?.trim()).filter(Boolean) as string[],
+          cast: Array.from(desc.querySelectorAll('a[href*="/casts/"]'))
+            .map(a => a.textContent?.trim()).filter(Boolean) as string[],
+          coverImage,
+        },
+        debug: {
+          hasH1: !!h1,
+          h1Text: h1?.textContent?.trim() || null,
+          code,
+          rawDate: rawDate || null,
+          hasMakerLink: !!makerLink,
+          genreCount: desc.querySelectorAll('a[href*="/categories/"]').length,
+          castCount: desc.querySelectorAll('a[href*="/casts/"]').length,
+          imgCount: desc.querySelectorAll('img').length,
+        },
       };
     });
+
+    console.log(`[scraper:dvd] Extraction debug:`, JSON.stringify(result.debug, null, 2));
+
+    return result.metadata;
   }
 }
