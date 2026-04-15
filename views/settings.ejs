@@ -34,11 +34,11 @@
           class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition-colors">
           Scan Library
         </button>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <div class="relative">
-            <input type="checkbox" id="full-scan" class="sr-only peer">
-            <div class="w-9 h-5 bg-gray-600 rounded-full peer-checked:bg-blue-500 transition-colors"></div>
-            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+        <label for="full-scan" class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="full-scan" class="hidden">
+          <div class="relative w-9 h-5">
+            <div class="w-9 h-5 bg-gray-600 rounded-full transition-colors" id="full-scan-track"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform" id="full-scan-knob"></div>
           </div>
           <span class="text-sm text-gray-400">Full scan</span>
         </label>
@@ -51,11 +51,11 @@
           class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm transition-colors">
           Scrape Metadata
         </button>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <div class="relative">
-            <input type="checkbox" id="full-scrape" class="sr-only peer">
-            <div class="w-9 h-5 bg-gray-600 rounded-full peer-checked:bg-blue-500 transition-colors"></div>
-            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+        <label for="full-scrape" class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" id="full-scrape" class="hidden">
+          <div class="relative w-9 h-5">
+            <div class="w-9 h-5 bg-gray-600 rounded-full transition-colors" id="full-scrape-track"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform" id="full-scrape-knob"></div>
           </div>
           <span class="text-sm text-gray-400">Full scrape</span>
         </label>

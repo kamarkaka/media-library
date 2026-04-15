@@ -116,6 +116,27 @@
     setButtonBusy('scrape-btn', busy, 'Scraping...', 'Scrape Metadata');
   };
 
+  // Toggle switches
+  function setupToggle(id) {
+    var input = document.getElementById(id);
+    var track = document.getElementById(id + '-track');
+    var knob = document.getElementById(id + '-knob');
+    if (!input || !track || !knob) return;
+    function update() {
+      if (input.checked) {
+        track.classList.replace('bg-gray-600', 'bg-blue-500');
+        knob.classList.add('translate-x-4');
+      } else {
+        track.classList.replace('bg-blue-500', 'bg-gray-600');
+        knob.classList.remove('translate-x-4');
+      }
+    }
+    input.addEventListener('change', update);
+    update();
+  }
+  setupToggle('full-scan');
+  setupToggle('full-scrape');
+
   // Change password
   if (passwordForm) {
     passwordForm.addEventListener('submit', function (e) {
