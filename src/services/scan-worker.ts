@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import knexInit from 'knex';
 import { config } from '../config';
 import { getScraper } from '../scrapers';
+import { resolveSourceUrl } from '../scrapers/source-url-resolver';
 import type { ScanProgress } from './scanner';
 
 const { fullRescan } = workerData as { fullRescan: boolean };
@@ -220,7 +221,20 @@ async function run(): Promise<void> {
           console.log(`[scan] ${label} ${filename} — scraping metadata`);
         }
         const scraperType = existing?.scraper_type || 'noop';
-        const sourceUrl = existing?.source_url;
+        let sourceUrl = existing?.source_url;
+
+        // Resolve source URL if not already set
+        if ((isNew || fullRescan) && !sourceUrl) {
+          progress({ step: 'Resolving source URL' });
+          console.log(`[scan] ${label} ${filename} — resolving source URL`);
+          const resolved = await resolveSourceUrl(filename);
+          if (resolved) {
+            sourceUrl = resolved;
+            await db('videos').where('id', videoId).update({ source_url: resolved });
+            console.log(`[scan] ${label} ${filename} — resolved source URL: ${resolved}`);
+          }
+        }
+
         const scraper = existing?.scraper_type ? getScraper(existing.scraper_type) : defaultScraper;
         console.log(`[scan] ${label} ${filename} — scraper=${scraperType}, source_url=${sourceUrl || 'none'}, willScrape=${isNew || fullRescan}`);
         const metadata = (isNew || fullRescan) ? await scraper.scrape(filename, sourceUrl) : null;
