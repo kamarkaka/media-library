@@ -63,7 +63,7 @@ function getVideoInfo(filePath: string): VideoInfo {
   };
   try {
     const output = execFileSync('ffprobe', [
-      '-v', 'error',
+      '-v', 'fatal',
       '-show_entries', 'format=duration,size,bit_rate',
       '-show_entries', 'stream=codec_type,codec_name,width,height,r_frame_rate',
       '-of', 'json',
