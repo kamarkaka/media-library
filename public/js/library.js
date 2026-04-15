@@ -64,7 +64,7 @@
     }
 
     var coverHtml = video.cover_image
-      ? '<img src="/api/videos/' + video.id + '/cover" alt="" class="w-full h-full object-cover" loading="lazy">'
+      ? '<img src="/api/videos/' + video.id + '/cover" alt="" class="h-full object-cover object-right absolute right-0" loading="lazy">'
       : '<div class="w-full h-full flex items-center justify-center text-gray-500">' +
         '<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
         '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" ' +
@@ -78,7 +78,7 @@
     return '<a href="/player/' + video.id + '" class="group bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all">' +
       '<div class="aspect-[2/3] bg-gray-700 relative overflow-hidden">' + coverHtml + progressHtml + '</div>' +
       '<div class="p-2">' +
-      '<p class="text-sm text-gray-200 truncate">' + escapeHtml(video.filename) + '</p>' +
+      '<p class="text-sm text-gray-200 break-words">' + escapeHtml(video.name || video.filename) + '</p>' +
       dateHtml +
       '</div></a>';
   }
