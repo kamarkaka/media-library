@@ -94,11 +94,6 @@
           class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">Search</button>
       </form>
-      <select id="sort-select" class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm">
-        <option value="filename" <%= currentFilters.sort === 'filename' ? 'selected' : '' %>>Name</option>
-        <option value="release_date" <%= currentFilters.sort === 'release_date' ? 'selected' : '' %>>Release Date</option>
-        <option value="last_viewed" <%= currentFilters.sort === 'last_viewed' ? 'selected' : '' %>>Last Viewed</option>
-      </select>
     </div>
 
     <% if (recentPlayback && recentPlayback.position > 0) { %>

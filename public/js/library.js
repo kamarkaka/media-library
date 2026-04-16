@@ -1,17 +1,6 @@
 (function () {
   var grid = document.getElementById('video-grid');
   var sentinel = document.getElementById('scroll-sentinel');
-  var sortSelect = document.getElementById('sort-select');
-
-  // Sort change reloads page
-  if (sortSelect) {
-    sortSelect.addEventListener('change', function () {
-      var url = new URL(window.location);
-      url.searchParams.set('sort', sortSelect.value);
-      url.searchParams.delete('page');
-      window.location = url.toString();
-    });
-  }
 
   // Infinite scroll
   if (sentinel && grid) {
