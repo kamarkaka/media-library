@@ -2,6 +2,97 @@
   var grid = document.getElementById('video-grid');
   var sentinel = document.getElementById('scroll-sentinel');
 
+  // --- Search autocomplete ---
+  var searchInput = document.getElementById('search-input');
+  var searchDropdown = document.getElementById('search-dropdown');
+  var searchTimer = null;
+
+  var sectionLabels = {
+    code: 'Code',
+    name: 'Name',
+    filename: 'Filename',
+    genre: 'Genre',
+    cast: 'Cast',
+  };
+
+  if (searchInput && searchDropdown) {
+    searchInput.addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      var q = searchInput.value.trim();
+      if (!q) { searchDropdown.classList.add('hidden'); return; }
+
+      // Debounce 200ms
+      searchTimer = setTimeout(function () {
+        fetch('/api/search-suggestions?q=' + encodeURIComponent(q))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var sections = Object.keys(data);
+            if (sections.length === 0) {
+              searchDropdown.classList.add('hidden');
+              return;
+            }
+
+            var html = '';
+            sections.forEach(function (section) {
+              html += '<div class="px-3 py-1.5 text-xs text-gray-500 uppercase tracking-wide bg-gray-900">' + (sectionLabels[section] || section) + '</div>';
+              data[section].forEach(function (value) {
+                html += '<div class="px-3 py-2 text-sm text-gray-200 cursor-pointer hover:bg-gray-700 truncate" data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</div>';
+              });
+            });
+
+            searchDropdown.innerHTML = html;
+            searchDropdown.classList.remove('hidden');
+          })
+          .catch(function () {});
+      }, 200);
+    });
+
+    // Click on suggestion
+    searchDropdown.addEventListener('click', function (e) {
+      var item = e.target.closest('[data-value]');
+      if (item) {
+        searchInput.value = item.dataset.value;
+        searchDropdown.classList.add('hidden');
+        document.getElementById('search-form').submit();
+      }
+    });
+
+    // Hide dropdown on blur
+    searchInput.addEventListener('blur', function () {
+      setTimeout(function () { searchDropdown.classList.add('hidden'); }, 150);
+    });
+
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', function (e) {
+      if (searchDropdown.classList.contains('hidden')) return;
+      var items = searchDropdown.querySelectorAll('[data-value]');
+      var active = searchDropdown.querySelector('[data-value].bg-gray-700');
+      var idx = -1;
+      items.forEach(function (el, i) { if (el === active) idx = i; });
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (active) active.classList.remove('bg-gray-700');
+        idx = Math.min(idx + 1, items.length - 1);
+        items[idx].classList.add('bg-gray-700');
+        items[idx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (active) active.classList.remove('bg-gray-700');
+        idx = Math.max(idx - 1, 0);
+        items[idx].classList.add('bg-gray-700');
+        items[idx].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && active) {
+        e.preventDefault();
+        searchInput.value = active.dataset.value;
+        searchDropdown.classList.add('hidden');
+        document.getElementById('search-form').submit();
+      } else if (e.key === 'Escape') {
+        searchDropdown.classList.add('hidden');
+      }
+    });
+  }
+
   // Infinite scroll
   if (sentinel && grid) {
     var loading = false;

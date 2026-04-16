@@ -83,15 +83,18 @@
   <div class="flex-1 overflow-y-auto p-6" id="library-content">
     <!-- Search + Sort -->
     <div class="flex items-center gap-3 mb-5">
-      <form method="GET" action="/" class="flex-1 flex gap-2">
+      <form method="GET" action="/" class="flex-1 flex gap-2" id="search-form">
         <% if (currentFilters.genre) { %><input type="hidden" name="genre" value="<%= currentFilters.genre %>"><% } %>
         <% if (currentFilters.director) { %><input type="hidden" name="director" value="<%= currentFilters.director %>"><% } %>
         <% if (currentFilters.maker) { %><input type="hidden" name="maker" value="<%= currentFilters.maker %>"><% } %>
         <% if (currentFilters.label) { %><input type="hidden" name="label" value="<%= currentFilters.label %>"><% } %>
         <% if (currentFilters.cast) { %><input type="hidden" name="cast" value="<%= currentFilters.cast %>"><% } %>
         <input type="hidden" name="sort" value="<%= currentFilters.sort %>">
-        <input type="text" name="q" value="<%= currentFilters.q || '' %>" placeholder="Search videos..."
-          class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+        <div class="flex-1 relative">
+          <input type="text" name="q" id="search-input" value="<%= currentFilters.q || '' %>" placeholder="Search videos..." autocomplete="off"
+            class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+          <div id="search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg max-h-80 overflow-y-auto z-30"></div>
+        </div>
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">Search</button>
       </form>
     </div>

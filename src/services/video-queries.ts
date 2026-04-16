@@ -30,7 +30,28 @@ export function parseVideoFilters(query: Record<string, any>): VideoFilters {
 function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.QueryBuilder {
   const { q, genre, director, maker, label, cast } = filters;
 
-  if (q) query.where('videos.filename', 'like', `%${q}%`);
+  if (q) {
+    const like = `%${q}%`;
+    query.where(function () {
+      this.where('videos.filename', 'like', like)
+        .orWhere('videos.code', 'like', like)
+        .orWhere('videos.name', 'like', like)
+        .orWhereExists(function (this: Knex.QueryBuilder) {
+          this.select(db.raw(1))
+            .from('video_genres')
+            .join('genres', 'video_genres.genre_id', 'genres.id')
+            .whereRaw('video_genres.video_id = videos.id')
+            .where('genres.name', 'like', like);
+        })
+        .orWhereExists(function (this: Knex.QueryBuilder) {
+          this.select(db.raw(1))
+            .from('video_cast')
+            .join('cast_members', 'video_cast.cast_id', 'cast_members.id')
+            .whereRaw('video_cast.video_id = videos.id')
+            .where('cast_members.name', 'like', like);
+        });
+    });
+  }
   if (director) query.where('videos.director', director);
   if (maker) query.where('videos.maker', maker);
   if (label) query.where('videos.label', label);
