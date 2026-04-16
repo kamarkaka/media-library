@@ -127,13 +127,13 @@
   var detailsForm = document.getElementById('video-meta-form');
   var editBtn = document.getElementById('details-edit-btn');
 
-  function showEditMode() {
+  window.showEditMode = function () {
     detailsView.style.display = 'none';
     detailsForm.style.display = '';
     editBtn.textContent = 'Cancel';
   }
 
-  function showViewMode() {
+  window.showViewMode = function () {
     detailsView.style.display = '';
     detailsForm.style.display = 'none';
     editBtn.textContent = 'Edit';
