@@ -36,7 +36,7 @@
             sections.forEach(function (section) {
               html += '<div class="px-3 py-1.5 text-xs text-gray-500 uppercase tracking-wide bg-gray-900">' + (sectionLabels[section] || section) + '</div>';
               data[section].forEach(function (value) {
-                html += '<div class="px-3 py-2 text-sm text-gray-200 cursor-pointer hover:bg-gray-700 truncate" data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</div>';
+                html += '<div class="px-3 py-2 text-sm text-gray-200 cursor-pointer hover:bg-gray-700 truncate" data-value="' + escapeHtml(value) + '" data-section="' + section + '">' + escapeHtml(value) + '</div>';
               });
             });
 
@@ -47,13 +47,36 @@
       }, 200);
     });
 
+    // Navigate to the appropriate filtered URL based on section type
+    function selectSuggestion(value, section) {
+      searchDropdown.classList.add('hidden');
+      var url = new URL(window.location.origin + '/');
+      if (section === 'genre' || section === 'cast') {
+        // Exact filter by genre or cast
+        url.searchParams.set(section, value);
+      } else {
+        // Text search for code, name, filename
+        url.searchParams.set('q', value);
+      }
+      window.location = url.toString();
+    }
+
     // Click on suggestion
     searchDropdown.addEventListener('click', function (e) {
       var item = e.target.closest('[data-value]');
       if (item) {
-        searchInput.value = item.dataset.value;
-        searchDropdown.classList.add('hidden');
-        document.getElementById('search-form').submit();
+        selectSuggestion(item.dataset.value, item.dataset.section);
+      }
+    });
+
+    // Form submit — build a clean URL with just q param
+    document.getElementById('search-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var q = searchInput.value.trim();
+      if (!q) {
+        window.location = '/';
+      } else {
+        window.location = '/?q=' + encodeURIComponent(q);
       }
     });
 
@@ -84,9 +107,7 @@
         items[idx].scrollIntoView({ block: 'nearest' });
       } else if (e.key === 'Enter' && active) {
         e.preventDefault();
-        searchInput.value = active.dataset.value;
-        searchDropdown.classList.add('hidden');
-        document.getElementById('search-form').submit();
+        selectSuggestion(active.dataset.value, active.dataset.section);
       } else if (e.key === 'Escape') {
         searchDropdown.classList.add('hidden');
       }
