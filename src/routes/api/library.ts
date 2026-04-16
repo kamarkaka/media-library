@@ -4,6 +4,7 @@ import {
   getScanProgress, getScrapeProgress,
   resetScanProgress, resetScrapeProgress,
 } from '../../services/scanner';
+import { runValidation, getValidatorConfig } from '../../scrapers/base';
 
 const router = Router();
 
@@ -41,6 +42,27 @@ router.get('/scrape/status', (_req, res) => {
   res.json(progress);
   if (progress.status === 'done' || progress.status === 'error') {
     resetScrapeProgress();
+  }
+});
+
+// Validate a scraper against its test configuration
+router.post('/validate', async (req, res) => {
+  const scraperType = req.body?.scraperType;
+  if (!scraperType) {
+    return res.status(400).json({ error: 'scraperType is required' });
+  }
+
+  const testConfig = getValidatorConfig(scraperType);
+  if (!testConfig) {
+    return res.json({ error: `No validator configured for "${scraperType}". Set the validator env vars.` });
+  }
+
+  try {
+    const result = await runValidation(scraperType);
+    res.json(result);
+  } catch (err: any) {
+    console.error(`[validator] Error running validation for "${scraperType}":`, err);
+    res.status(500).json({ error: err.message || 'Validation failed' });
   }
 });
 

@@ -120,6 +120,62 @@
     setButtonBusy('scrape-btn', busy, 'Scraping...', 'Scrape Metadata');
   };
 
+  // --- Validate scraper ---
+  window.validateScraper = function () {
+    var btn = document.getElementById('validate-btn');
+    var statusEl = document.getElementById('validate-status');
+    var resultsEl = document.getElementById('validate-results');
+    var scraperSelect = document.getElementById('validate-scraper-type');
+    var scraperType = scraperSelect ? scraperSelect.value : '';
+
+    btn.disabled = true;
+    btn.textContent = 'Validating...';
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    statusEl.textContent = 'Running validation...';
+    statusEl.className = 'text-sm text-gray-400';
+    resultsEl.classList.add('hidden');
+
+    fetch('/api/library/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scraperType: scraperType }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.disabled = false;
+        btn.textContent = 'Validate Scraper';
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+        if (data.error) {
+          statusEl.textContent = data.error;
+          statusEl.className = 'text-sm text-yellow-400';
+          return;
+        }
+
+        statusEl.textContent = data.success ? 'PASS' : 'FAIL';
+        statusEl.className = 'text-sm ' + (data.success ? 'text-green-400' : 'text-red-400');
+
+        // Show field-by-field results
+        var html = '<table class="w-full text-xs"><thead><tr class="text-gray-500"><th class="text-left py-1">Field</th><th class="text-left py-1">Expected</th><th class="text-left py-1">Actual</th><th class="text-left py-1">Result</th></tr></thead><tbody>';
+        data.fields.forEach(function (f) {
+          var expected = Array.isArray(f.expected) ? f.expected.join(', ') : (f.expected || '—');
+          var actual = Array.isArray(f.actual) ? f.actual.join(', ') : (f.actual || '—');
+          var icon = f.match ? '<span class="text-green-400">✓</span>' : '<span class="text-red-400">✗</span>';
+          html += '<tr class="border-t border-gray-700"><td class="py-1 text-gray-300">' + f.field + '</td><td class="py-1 text-gray-400 truncate max-w-[200px]">' + escapeHtml(expected) + '</td><td class="py-1 text-gray-400 truncate max-w-[200px]">' + escapeHtml(actual) + '</td><td class="py-1">' + icon + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        resultsEl.innerHTML = html;
+        resultsEl.classList.remove('hidden');
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = 'Validate Scraper';
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+      });
+  };
+
   // Toggle switches
   function setupToggle(id) {
     var input = document.getElementById(id);
