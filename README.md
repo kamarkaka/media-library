@@ -99,8 +99,8 @@ src/scrapers/
 
 When the user clicks "Scrape Metadata" in Settings, the system:
 
-1. **Resolves source URLs** — For each video without a `source_url`, the resolver derives a search code from the filename, searches a site, and finds the video's detail page URL. The resolved URL is saved to the database for future use.
-2. **Scrapes metadata** — The scraper navigates to the `source_url` using Puppeteer, extracts metadata (name, code, release date, director, genres, cast, cover image, etc.), and writes it to the database.
+1. **Resolves source URLs** — For each video, the resolver derives a search code from the filename, searches a site, and finds the video's detail page URL.
+2. **Scrapes metadata** — The scraper navigates to the resolved URL using Puppeteer, extracts metadata (name, code, release date, director, genres, cast, cover image, etc.), and writes it to the database.
 
 ### Adding a New Scraper
 
@@ -236,7 +236,7 @@ export function createScraper() { return new MySiteScraper(); }
 - Set `scraperType` to match the directory name
 - Use a single `page.evaluate` string call to extract HTML, then parse server-side with cheerio
 - Avoid function declarations inside `page.evaluate` (esbuild adds `__name` which doesn't exist in the browser context — use arrow functions if you must evaluate code in-page)
-- `buildUrl()` is used when no `source_url` exists and there's no resolver. Return `null` if the scraper relies on the resolver
+- `buildUrl()` is used when there's no resolver. Return `null` if the scraper relies on the resolver
 - `createScraper()` **must** be exported — the dynamic loader requires it
 
 #### 5. That's it — no registration needed

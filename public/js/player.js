@@ -161,10 +161,6 @@
         ? '<a href="' + escapeHtml(coverInput.value) + '" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs">' + escapeHtml(coverInput.value) + '</a>'
         : '—';
     }
-    // Source URL show "Set" or "—"
-    var srcInput = detailsForm.querySelector('[name="source_url"]');
-    var srcSpan = detailsView.querySelector('[data-view="source_url"]');
-    if (srcInput && srcSpan) srcSpan.textContent = srcInput.value ? 'Set' : '—';
     // Genres and cast from tag containers
     ['genres', 'cast'].forEach(function (type) {
       var span = detailsView.querySelector('[data-view="' + type + '"]');

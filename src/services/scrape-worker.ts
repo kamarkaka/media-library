@@ -45,12 +45,21 @@ async function run(): Promise<void> {
 
     let videos: any[];
     if (fullScrape) {
-      videos = await db('videos').select('id', 'filename', 'source_url');
+      // Full scrape: re-scrape all videos
+      videos = await db('videos').select('id', 'filename');
       console.log(`[scrape] Full scrape — ${videos.length} videos`);
     } else {
+      // Quick scrape: videos missing code, name, release_date, or cast
       videos = await db('videos')
-        .whereNull('name').orWhereNull('code').orWhere('name', '').orWhere('code', '')
-        .select('id', 'filename', 'source_url');
+        .leftJoin('video_cast', 'videos.id', 'video_cast.video_id')
+        .where(function () {
+          this.whereNull('videos.code').orWhere('videos.code', '')
+            .orWhereNull('videos.name').orWhere('videos.name', '')
+            .orWhereNull('videos.release_date').orWhere('videos.release_date', '')
+            .orWhereNull('video_cast.video_id');
+        })
+        .groupBy('videos.id')
+        .select('videos.id', 'videos.filename');
       console.log(`[scrape] Quick scrape — ${videos.length} videos with missing info`);
     }
 
@@ -64,22 +73,22 @@ async function run(): Promise<void> {
       progress({ currentFile: video.filename, step: 'Scraping' });
 
       try {
-        let sourceUrl = video.source_url;
-
-        if (!sourceUrl && resolver) {
+        // Always resolve source URL via resolver
+        let sourceUrl: string | null = null;
+        if (resolver) {
           progress({ step: 'Resolving source URL' });
           console.log(`[scrape] ${label} ${video.filename} — resolving source URL`);
-          const resolved = await resolver.resolveSourceUrl(video.filename);
-          if (resolved) {
-            sourceUrl = resolved;
-            await db('videos').where('id', video.id).update({ source_url: resolved });
-            console.log(`[scrape] ${label} ${video.filename} — resolved: ${resolved}`);
+          sourceUrl = await resolver.resolveSourceUrl(video.filename);
+          if (sourceUrl) {
+            console.log(`[scrape] ${label} ${video.filename} — resolved: ${sourceUrl}`);
+          } else {
+            console.log(`[scrape] ${label} ${video.filename} — could not resolve source URL`);
           }
         }
 
         console.log(`[scrape] ${label} ${video.filename} — source_url=${sourceUrl || 'none'}`);
 
-        const metadata = await scraper.scrape(video.filename, sourceUrl);
+        const metadata = await scraper.scrape(video.filename, sourceUrl || undefined);
         if (metadata) {
           const updates: Record<string, any> = {};
           if (metadata.code) updates.code = metadata.code;
