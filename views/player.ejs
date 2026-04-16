@@ -9,6 +9,18 @@
       Your browser does not support the video tag.
     </video>
 
+    <% if (video.cover_image) { %>
+    <!-- Cover image overlay -->
+    <div id="cover-overlay" class="absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-500" style="max-width: 960px; margin: 0 auto; left: 0; right: 0;">
+      <img src="/api/videos/<%= video.id %>/cover" alt="" class="absolute inset-0 w-full h-full object-cover">
+      <button id="cover-play-btn" class="relative z-10 w-16 h-16 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors">
+        <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+        </svg>
+      </button>
+    </div>
+    <% } %>
+
     <% if (prevVideo) { %>
     <a href="/player/<%= prevVideo.id %>" class="video-nav video-nav-prev" title="Previous: <%= prevVideo.filename %>">
       <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -31,29 +43,27 @@
     <% const displayTitle = video.name || video.filename; %>
     <h1 class="text-base font-semibold break-words mb-4"><%= displayTitle %></h1>
 
-    <%
-      const GB = 1024 * 1024 * 1024;
-      const MB = 1024 * 1024;
-    %>
-    <button type="button" id="metadata-toggle" class="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 hover:text-gray-300 transition-colors">
-      <svg id="metadata-chevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-      </svg>
-      Metadata
-    </button>
-    <div id="metadata-content" class="text-sm text-gray-400 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-4" style="display: none">
-      <div class="flex justify-between"><span class="text-gray-500">Filename</span><span class="text-gray-300 truncate ml-2"><%= video.filename %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Duration</span><span class="text-gray-300"><%= video.length != null ? Math.floor(video.length / 60) + 'm ' + (video.length % 60) + 's' : '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Resolution</span><span class="text-gray-300"><%= video.width && video.height ? video.width + ' × ' + video.height : '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Video Codec</span><span class="text-gray-300"><%= video.video_codec || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Audio Codec</span><span class="text-gray-300"><%= video.audio_codec || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Framerate</span><span class="text-gray-300"><%= video.framerate != null ? video.framerate + ' fps' : '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Bitrate</span><span class="text-gray-300"><%= video.bitrate ? (video.bitrate / 1000).toFixed(0) + ' kbps' : '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">File Size</span><span class="text-gray-300"><%= video.file_size ? (video.file_size >= GB ? (video.file_size / GB).toFixed(2) + ' GB' : (video.file_size / MB).toFixed(1) + ' MB') : '—' %></span></div>
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Details</h2>
+      <button type="button" id="details-edit-btn" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Edit</button>
     </div>
 
-    <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-4 pt-4 border-t border-gray-700/50">Details</h2>
-    <form id="video-meta-form" data-video-id="<%= video.id %>">
+    <!-- Read-only view -->
+    <div id="details-view" class="text-sm text-gray-400 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-2">
+      <div class="flex justify-between"><span class="text-gray-500">Code</span><span class="text-gray-300 ml-2" data-view="code"><%= video.code || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Name</span><span class="text-gray-300 truncate ml-2" data-view="name"><%= video.name || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Release Date</span><span class="text-gray-300 ml-2" data-view="release_date" data-date="<%= video.release_date || '' %>"><%= video.release_date || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Director</span><span class="text-gray-300 ml-2" data-view="director"><%= video.director || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Maker</span><span class="text-gray-300 ml-2" data-view="maker"><%= video.maker || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Label</span><span class="text-gray-300 ml-2" data-view="label"><%= video.label || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Cover Image</span><span class="text-gray-300 truncate ml-2" data-view="cover_image"><% if (video.cover_image) { %><a href="<%= video.cover_image %>" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs"><%= video.cover_image %></a><% } else { %>—<% } %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Source URL</span><span class="text-gray-300 truncate ml-2" data-view="source_url"><%= video.source_url ? 'Set' : '—' %></span></div>
+      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Genres</span><span class="text-gray-300 ml-2" data-view="genres"><%= genres.length ? genres.map(function(g) { return g.name; }).join(', ') : '—' %></span></div>
+      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Cast</span><span class="text-gray-300 ml-2" data-view="cast"><%= cast.length ? cast.map(function(c) { return c.name; }).join(', ') : '—' %></span></div>
+    </div>
+
+    <!-- Edit form (hidden by default) -->
+    <form id="video-meta-form" data-video-id="<%= video.id %>" style="display: none">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
         <div>
           <label class="block text-gray-500 mb-1">Code</label>
@@ -103,6 +113,27 @@
         <span id="meta-save-status" class="text-sm"></span>
       </div>
     </form>
+
+    <%
+      const GB = 1024 * 1024 * 1024;
+      const MB = 1024 * 1024;
+    %>
+    <button type="button" id="metadata-toggle" class="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-4 pt-4 border-t border-gray-700/50 hover:text-gray-300 transition-colors">
+      <svg id="metadata-chevron" class="w-3.5 h-3.5 transition-transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      Metadata
+    </button>
+    <div id="metadata-content" class="text-sm text-gray-400 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-4" style="display: grid">
+      <div class="flex justify-between"><span class="text-gray-500">Filename</span><span class="text-gray-300 truncate ml-2"><%= video.filename %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Duration</span><span class="text-gray-300"><%= video.length != null ? Math.floor(video.length / 60) + 'm ' + (video.length % 60) + 's' : '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Resolution</span><span class="text-gray-300"><%= video.width && video.height ? video.width + ' × ' + video.height : '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Video Codec</span><span class="text-gray-300"><%= video.video_codec || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Audio Codec</span><span class="text-gray-300"><%= video.audio_codec || '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Framerate</span><span class="text-gray-300"><%= video.framerate != null ? video.framerate + ' fps' : '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Bitrate</span><span class="text-gray-300"><%= video.bitrate ? (video.bitrate / 1000).toFixed(0) + ' kbps' : '—' %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">File Size</span><span class="text-gray-300"><%= video.file_size ? (video.file_size >= GB ? (video.file_size / GB).toFixed(2) + ' GB' : (video.file_size / MB).toFixed(1) + ' MB') : '—' %></span></div>
+    </div>
   </div>
 </div>
 <script src="/js/player.js"></script>

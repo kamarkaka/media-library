@@ -48,14 +48,23 @@ export class DvdScraper extends PuppeteerScraper {
     const code = findByLabel('DVD ID');
     console.log(`[scraper:dvd] code: ${code || '(not found)'}`);
 
-    // Release date
+    // Release date — normalize to YYYY-MM-DD
     let releaseDate: string | undefined;
     const rawDate = findByLabel('商品発売日');
     if (rawDate) {
+      // Try YYYY/MM/DD or YYYY-MM-DD or YYYY年MM月DD formats
       const match = rawDate.match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
-      releaseDate = match
-        ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
-        : rawDate;
+      if (match) {
+        releaseDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      } else {
+        // Try parsing with Date constructor (handles "30 Dec 2022" etc.)
+        const parsed = new Date(rawDate);
+        if (!isNaN(parsed.getTime())) {
+          releaseDate = parsed.toISOString().split('T')[0];
+        } else {
+          releaseDate = rawDate;
+        }
+      }
     }
     console.log(`[scraper:dvd] releaseDate: ${releaseDate || '(not found)'}`);
 

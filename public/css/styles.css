@@ -19,6 +19,11 @@
   height: 34px;
   box-sizing: border-box;
 }
+#video-meta-form input[type="date"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
 #video-meta-form select {
   -webkit-appearance: none;
   -moz-appearance: none;

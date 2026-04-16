@@ -13,6 +13,24 @@
     }, { once: true });
   }
 
+  // --- Cover image overlay ---
+  var coverOverlay = document.getElementById('cover-overlay');
+  if (coverOverlay) {
+    coverOverlay.addEventListener('click', function () {
+      coverOverlay.classList.add('opacity-0');
+      video.play();
+      setTimeout(function () { coverOverlay.remove(); }, 500);
+    });
+
+    // Also hide cover if video starts playing by other means (e.g. native controls)
+    video.addEventListener('play', function () {
+      if (coverOverlay.parentNode) {
+        coverOverlay.classList.add('opacity-0');
+        setTimeout(function () { coverOverlay.remove(); }, 500);
+      }
+    }, { once: true });
+  }
+
   // --- Playback logging ---
 
   // Log: start or resume
@@ -101,6 +119,70 @@
       body: JSON.stringify({ event: event, position: position }),
     }).catch(function (err) {
       console.error('Failed to log event:', err);
+    });
+  }
+
+  // --- Details view/edit toggle ---
+  var detailsView = document.getElementById('details-view');
+  var detailsForm = document.getElementById('video-meta-form');
+  var editBtn = document.getElementById('details-edit-btn');
+
+  function showEditMode() {
+    detailsView.style.display = 'none';
+    detailsForm.style.display = '';
+    editBtn.textContent = 'Cancel';
+  }
+
+  function showViewMode() {
+    detailsView.style.display = '';
+    detailsForm.style.display = 'none';
+    editBtn.textContent = 'Edit';
+  }
+
+  // Sync read-only view spans from form input values
+  function syncDetailsView() {
+    var fields = ['code', 'name', 'director', 'maker', 'label'];
+    fields.forEach(function (field) {
+      var input = detailsForm.querySelector('[name="' + field + '"]');
+      var span = detailsView.querySelector('[data-view="' + field + '"]');
+      if (input && span) span.textContent = input.value || '—';
+    });
+    // Release date — format to locale
+    var dateInput = detailsForm.querySelector('[name="release_date"]');
+    var dateSpan = detailsView.querySelector('[data-view="release_date"]');
+    if (dateInput && dateSpan) {
+      dateSpan.textContent = dateInput.value ? formatLocaleDate(dateInput.value) : '—';
+    }
+    // Cover image: show as link or "—"
+    var coverInput = detailsForm.querySelector('[name="cover_image"]');
+    var coverSpan = detailsView.querySelector('[data-view="cover_image"]');
+    if (coverInput && coverSpan) {
+      coverSpan.innerHTML = coverInput.value
+        ? '<a href="' + escapeHtml(coverInput.value) + '" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs">' + escapeHtml(coverInput.value) + '</a>'
+        : '—';
+    }
+    // Source URL show "Set" or "—"
+    var srcInput = detailsForm.querySelector('[name="source_url"]');
+    var srcSpan = detailsView.querySelector('[data-view="source_url"]');
+    if (srcInput && srcSpan) srcSpan.textContent = srcInput.value ? 'Set' : '—';
+    // Genres and cast from tag containers
+    ['genres', 'cast'].forEach(function (type) {
+      var span = detailsView.querySelector('[data-view="' + type + '"]');
+      if (!span) return;
+      var tags = document.querySelectorAll('#' + type + '-tags [data-tag-id]');
+      var names = [];
+      tags.forEach(function (el) { names.push(el.textContent.trim()); });
+      span.textContent = names.length ? names.join(', ') : '—';
+    });
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener('click', function () {
+      if (detailsForm.style.display === 'none') {
+        showEditMode();
+      } else {
+        showViewMode();
+      }
     });
   }
 
@@ -291,6 +373,8 @@
           if (result.ok) {
             metaStatus.textContent = 'Saved!';
             metaStatus.className = 'text-sm text-green-400';
+            syncDetailsView();
+            showViewMode();
           } else {
             metaStatus.textContent = result.data.error || 'Failed';
             metaStatus.className = 'text-sm text-red-400';

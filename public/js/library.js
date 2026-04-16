@@ -72,7 +72,7 @@
         '</svg></div>';
 
     var dateHtml = video.release_date
-      ? '<p class="text-xs text-gray-500 mt-0.5">' + escapeHtml(video.release_date) + '</p>'
+      ? '<p class="text-xs text-gray-500 mt-0.5">' + formatLocaleDate(video.release_date) + '</p>'
       : '';
 
     return '<a href="/player/' + video.id + '" class="group bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all">' +

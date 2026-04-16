@@ -25,7 +25,7 @@
     <% const cardTitle = video.name || video.filename; %>
     <p class="text-sm text-gray-200 break-words"><%= cardTitle %></p>
     <% if (video.release_date) { %>
-    <p class="text-xs text-gray-500 mt-0.5"><%= video.release_date %></p>
+    <p class="text-xs text-gray-500 mt-0.5 locale-date" data-date="<%= video.release_date %>"><%= video.release_date %></p>
     <% } %>
   </div>
 </a>
