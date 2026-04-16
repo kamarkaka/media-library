@@ -5,6 +5,7 @@ import {
   resetScanProgress, resetScrapeProgress,
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig } from '../../scrapers/base';
+import { getLatestValidationResults } from '../../services/validator-scheduler';
 
 const router = Router();
 
@@ -63,6 +64,16 @@ router.post('/validate', async (req, res) => {
   } catch (err: any) {
     console.error(`[validator] Error running validation for "${scraperType}":`, err);
     res.status(500).json({ error: err.message || 'Validation failed' });
+  }
+});
+
+// Get latest validation results per scraper
+router.get('/validation-results', async (_req, res) => {
+  try {
+    const results = await getLatestValidationResults();
+    res.json(results);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

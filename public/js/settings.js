@@ -176,6 +176,12 @@
       });
   };
 
+  // Expand/collapse validation details
+  window.toggleValidationDetails = function (el) {
+    var details = el.parentElement.querySelector('.validation-details');
+    if (details) details.classList.toggle('hidden');
+  };
+
   // Toggle switches
   function setupToggle(id) {
     var input = document.getElementById(id);

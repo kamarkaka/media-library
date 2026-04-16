@@ -105,6 +105,18 @@ export async function initDatabase(): Promise<void> {
     });
   }
 
+  if (!(await db.schema.hasTable('validation_results'))) {
+    await db.schema.createTable('validation_results', (t) => {
+      t.increments('id').primary();
+      t.text('scraper_type').notNullable();
+      t.integer('success').notNullable();
+      t.text('fields').notNullable();
+      t.text('error').nullable();
+      t.timestamp('created_at').defaultTo(db.fn.now());
+    });
+    await db.raw('CREATE INDEX idx_validation_scraper_date ON validation_results(scraper_type, created_at DESC)');
+  }
+
   // Add columns for existing databases
   const cols = await db.raw("PRAGMA table_info('videos')");
   const colNames = new Set(cols.map((c: any) => c.name));

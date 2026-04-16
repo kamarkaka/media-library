@@ -85,6 +85,52 @@
     </div>
   </section>
 
+  <!-- Validation Results -->
+  <% if (validationResults && validationResults.length > 0) { %>
+  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Validation Results</h2>
+    <% validationResults.forEach(function(r) { %>
+    <div class="border-b border-gray-700 last:border-0 py-3">
+      <div class="flex items-center justify-between cursor-pointer" onclick="toggleValidationDetails(this)">
+        <div class="flex items-center gap-3">
+          <% if (r.error) { %>
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">ERROR</span>
+          <% } else if (r.success) { %>
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-900 text-green-300">PASS</span>
+          <% } else { %>
+            <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">FAIL</span>
+          <% } %>
+          <span class="text-sm text-gray-300"><%= r.scraper_type %></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-500"><%= new Date(r.created_at).toLocaleString() %></span>
+          <span class="text-gray-500 text-xs">&#9660;</span>
+        </div>
+      </div>
+      <div class="validation-details hidden mt-2">
+        <% if (r.error) { %>
+          <p class="text-xs text-red-400"><%= r.error %></p>
+        <% } else if (r.fields && r.fields.length > 0) { %>
+          <table class="w-full text-xs mt-1">
+            <thead><tr class="text-gray-500"><th class="text-left py-1">Field</th><th class="text-left py-1">Expected</th><th class="text-left py-1">Actual</th><th class="text-left py-1">Result</th></tr></thead>
+            <tbody>
+              <% r.fields.forEach(function(f) { %>
+              <tr class="border-t border-gray-700">
+                <td class="py-1 text-gray-300"><%= f.field %></td>
+                <td class="py-1 text-gray-400 truncate max-w-[200px]"><%= Array.isArray(f.expected) ? f.expected.join(', ') : (f.expected || '\u2014') %></td>
+                <td class="py-1 text-gray-400 truncate max-w-[200px]"><%= Array.isArray(f.actual) ? f.actual.join(', ') : (f.actual || '\u2014') %></td>
+                <td class="py-1"><%= f.match ? '\u2713' : '\u2717' %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+    <% }) %>
+  </section>
+  <% } %>
+
   <!-- Change Password -->
   <section class="bg-gray-800 rounded-lg p-6">
     <h2 class="text-lg font-semibold mb-4">Change Password</h2>

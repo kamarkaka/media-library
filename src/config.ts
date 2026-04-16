@@ -10,6 +10,7 @@ export interface AppConfig {
   authUsername: string;
   authPasswordHash: string;
   sessionSecret: string;
+  validatorCron: string;
 }
 
 export const config: AppConfig = {
@@ -19,4 +20,5 @@ export const config: AppConfig = {
   authUsername: 'admin',
   authPasswordHash: '',
   sessionSecret: '',
+  validatorCron: process.env.VALIDATOR_CRON || '0 8 * * *',
 };

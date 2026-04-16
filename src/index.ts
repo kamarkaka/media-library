@@ -14,6 +14,7 @@ import playerRouter from './routes/player';
 import settingsRouter from './routes/settings';
 import tagsRouter from './routes/tags';
 import apiRouter from './routes/api';
+import { startValidatorScheduler } from './services/validator-scheduler';
 
 async function main() {
   await initDatabase();
@@ -92,6 +93,7 @@ async function main() {
 
   app.listen(config.port, () => {
     console.log(`Media Library running at http://localhost:${config.port}`);
+    startValidatorScheduler();
   });
 }
 
