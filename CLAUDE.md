@@ -13,25 +13,37 @@ A self-hosted video library web app (like a simpler Jellyfin/Plex). Single-owner
 - `npm start` — run compiled output (`node dist/index.js`)
 - `npm run setup-auth` — interactive CLI to set login credentials
 
+System dependency: `ffprobe` (from FFmpeg) must be on PATH for video metadata extraction during scan.
+
 No test framework is configured.
 
 ## Architecture
 
 **Server-rendered app**: Express + EJS templates + vanilla JS on the client. No frontend build step — Tailwind is loaded via CDN.
 
-**Database**: SQLite via `better-sqlite3` with Knex query builder. Schema is created imperatively in `src/db.ts` (no migrations directory). Tables: `videos`, `genres`, `video_genres`, `cast_members`, `video_cast`, `library_paths`, `playback_state`, `sessions`.
+**Database**: SQLite via `better-sqlite3` with Knex query builder. Schema is created imperatively in `src/db.ts` (no migrations directory). New columns are added via `ALTER TABLE` checks at startup, not migrations. Tables: `videos`, `genres`, `video_genres`, `cast_members`, `video_cast`, `library_paths`, `playback_state`, `settings`, `sessions`.
+
+**Auth**: Credentials are stored in the `settings` table (not env vars). On first run, a temporary password is generated and printed to console. `npm run setup-auth` writes a permanent hash to the DB.
 
 **Route structure**: Page routes (`src/routes/*.ts`) render EJS views. API routes (`src/routes/api/*.ts`) serve JSON under `/api`. All routes except auth require session authentication (`src/middleware/auth.ts`).
 
-**Scanner** (`src/services/scanner.ts`): Walks configured library paths, finds video files by extension, inserts/updates records, uses `ffprobe` for duration, and calls the active scraper for metadata. Tracks progress in a module-level singleton (`scanProgress`) polled by the frontend via `/api/library/progress`.
+**Two-phase pipeline — scan then scrape**: These are independent operations, each running in a Worker thread spawned by `src/services/scanner.ts`. Progress is tracked via module-level singletons polled by the frontend.
+- **Scan** (`scan-worker.ts`): Walks library paths, discovers video files by extension, inserts new records, runs `ffprobe` for duration/resolution/codec info. Does not fetch external metadata.
+- **Scrape** (`scrape-worker.ts`): Iterates existing video records, resolves source URLs via the resolver, then calls the scraper for metadata (title, cast, genres, cover image, etc.). The `syncRelation` helper handles many-to-many upserts for genres and cast.
 
-**Scraper interface** (`src/scrapers/types.ts`): `Scraper.scrape(filename)` returns optional metadata (director, genres, cast, cover image, etc.). Default is `NoOpScraper`. New scrapers are registered in `src/scrapers/index.ts` and selected via `SCRAPER_TYPE` env var.
+**Scraper plugin system** (`src/scrapers/`): Scrapers are loaded dynamically by directory name. To add a new scraper, create `src/scrapers/<name>/` with:
+- `scraper.ts` — must export `createScraper(): Scraper` (required)
+- `resolver.ts` — must export `resolveSourceUrl(filename) → URL` and `closeResolver()` (optional)
+- `validator.ts` — must export `getTestConfig(): ValidatorTestConfig` for automated validation (optional)
 
-**Video relations**: Genres and cast use many-to-many join tables. The `syncRelation` helper in scanner.ts handles upsert logic for both.
+The active scraper is set via `SCRAPER_TYPE` env var (default: `dvd`). Base types are in `src/scrapers/base/types.ts`; loader logic is in `src/scrapers/base/index.ts`.
+
+**Video queries** (`src/services/video-queries.ts`): Centralized query builder for filtering, sorting, pagination, and playback state lookups — shared by both page routes and API routes.
 
 ## Key Patterns
 
 - Config is centralized in `src/config.ts`, sourced from env vars / `.env`
 - Video IDs are UUIDs, but scrapers can override them with a canonical ID
 - Playback position is saved per-video and used for resume functionality
-- The scanner prevents concurrent runs via status check on the singleton
+- Worker threads prevent concurrent runs via status check on the progress singleton
+- Docker support via `Dockerfile` and `docker-compose.yml`
