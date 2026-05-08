@@ -30,7 +30,7 @@ export function parseVideoFilters(query: Record<string, any>): VideoFilters {
     label: parseCSV(query.label),
     cast: parseCSV(query.cast),
     match: match === 'matched' || match === 'unmatched' ? match : undefined,
-    sort: (query.sort as string) || 'filename',
+    sort: (query.sort as string) || 'release_date',
     page: parseInt(query.page as string) || 1,
     pageSize: parseInt(query.page_size as string) || 24,
   };
@@ -126,10 +126,8 @@ export async function queryVideos(filters: VideoFilters) {
     query = query
       .leftJoin('playback_state', 'videos.id', 'playback_state.video_id')
       .orderByRaw('playback_state.last_viewed DESC NULLS LAST');
-  } else if (sort === 'release_date') {
-    query = query.orderByRaw('release_date DESC NULLS LAST');
   } else {
-    query = query.orderBy('videos.filename', 'asc');
+    query = query.orderByRaw('release_date ASC NULLS LAST');
   }
 
   const videos = await query.limit(pageSize).offset(offset);
