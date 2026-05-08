@@ -1,23 +1,24 @@
 <%- include('partials/head') %>
 <div class="flex flex-1 overflow-hidden">
   <div class="flex-1 overflow-y-auto p-6" id="library-content">
-    <!-- Search + Sort -->
-    <div class="flex items-center gap-3 mb-5">
-      <%
-        // Determine what to show in the search bar based on active filters
-        const activeFilter = currentFilters.q || currentFilters.genre || currentFilters.cast || '';
-      %>
+    <!-- Search -->
+    <div class="flex items-center gap-3 mb-3">
       <form method="GET" action="/" class="flex-1 flex gap-2" id="search-form">
         <div class="flex-1 relative">
-          <input type="text" name="q" id="search-input" value="<%= activeFilter %>" placeholder="Search videos..." autocomplete="off"
+          <input type="text" name="q" id="search-input" value="<%= currentFilters.q || '' %>" placeholder="Search videos..." autocomplete="off"
             class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
           <div id="search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg max-h-80 overflow-y-auto z-30"></div>
         </div>
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">Search</button>
-        <% if (activeFilter) { %>
+        <% if (currentFilters.q) { %>
         <a href="/" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm text-gray-300 transition-colors">Clear</a>
         <% } %>
       </form>
+    </div>
+
+    <!-- Filter Pills -->
+    <div id="filter-pills" class="mb-4"
+         data-current='<%- JSON.stringify({ genre: currentFilters.genre || [], cast: currentFilters.cast || [], director: currentFilters.director || [], maker: currentFilters.maker || [], label: currentFilters.label || [], match: currentFilters.match || '' }) %>'>
     </div>
 
     <% if (recentPlayback && recentPlayback.position > 0) { %>
@@ -40,7 +41,7 @@
     <% if (pagination.hasMore) { %>
     <div id="scroll-sentinel" class="py-8 text-center text-gray-600 text-sm"
          data-page="<%= pagination.page %>"
-         data-filters='<%- JSON.stringify({ q: currentFilters.q || '', genre: currentFilters.genre || '', director: currentFilters.director || '', maker: currentFilters.maker || '', label: currentFilters.label || '', cast: currentFilters.cast || '', sort: currentFilters.sort }) %>'>
+         data-filters='<%- JSON.stringify({ q: currentFilters.q || '', genre: (currentFilters.genre || []).join(","), director: (currentFilters.director || []).join(","), maker: (currentFilters.maker || []).join(","), label: (currentFilters.label || []).join(","), cast: (currentFilters.cast || []).join(","), match: currentFilters.match || '', sort: currentFilters.sort }) %>'>
       Loading more...
     </div>
     <% } %>

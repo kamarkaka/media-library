@@ -3,24 +3,33 @@ import type { Knex } from 'knex';
 
 export interface VideoFilters {
   q?: string;
-  genre?: string;
-  director?: string;
-  maker?: string;
-  label?: string;
-  cast?: string;
+  genre?: string[];
+  director?: string[];
+  maker?: string[];
+  label?: string[];
+  cast?: string[];
+  match?: 'matched' | 'unmatched';
   sort?: string;
   page?: number;
   pageSize?: number;
 }
 
+function parseCSV(value: any): string[] | undefined {
+  if (!value) return undefined;
+  const items = String(value).split(',').map(s => s.trim()).filter(Boolean);
+  return items.length > 0 ? items : undefined;
+}
+
 export function parseVideoFilters(query: Record<string, any>): VideoFilters {
+  const match = query.match as string | undefined;
   return {
     q: query.q as string | undefined,
-    genre: query.genre as string | undefined,
-    director: query.director as string | undefined,
-    maker: query.maker as string | undefined,
-    label: query.label as string | undefined,
-    cast: query.cast as string | undefined,
+    genre: parseCSV(query.genre),
+    director: parseCSV(query.director),
+    maker: parseCSV(query.maker),
+    label: parseCSV(query.label),
+    cast: parseCSV(query.cast),
+    match: match === 'matched' || match === 'unmatched' ? match : undefined,
     sort: (query.sort as string) || 'filename',
     page: parseInt(query.page as string) || 1,
     pageSize: parseInt(query.page_size as string) || 24,
@@ -28,7 +37,7 @@ export function parseVideoFilters(query: Record<string, any>): VideoFilters {
 }
 
 function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.QueryBuilder {
-  const { q, genre, director, maker, label, cast } = filters;
+  const { q, genre, director, maker, label, cast, match } = filters;
 
   if (q) {
     const like = `%${q}%`;
@@ -52,9 +61,10 @@ function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.Que
         });
     });
   }
-  if (director) query.where('videos.director', director);
-  if (maker) query.where('videos.maker', maker);
-  if (label) query.where('videos.label', label);
+
+  if (director) query.whereIn('videos.director', director);
+  if (maker) query.whereIn('videos.maker', maker);
+  if (label) query.whereIn('videos.label', label);
 
   if (genre) {
     query.whereExists(function (this: Knex.QueryBuilder) {
@@ -62,7 +72,7 @@ function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.Que
         .from('video_genres')
         .join('genres', 'video_genres.genre_id', 'genres.id')
         .whereRaw('video_genres.video_id = videos.id')
-        .where('genres.name', genre);
+        .whereIn('genres.name', genre);
     });
   }
 
@@ -72,8 +82,32 @@ function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.Que
         .from('video_cast')
         .join('cast_members', 'video_cast.cast_id', 'cast_members.id')
         .whereRaw('video_cast.video_id = videos.id')
-        .where('cast_members.name', cast);
+        .whereIn('cast_members.name', cast);
     });
+  }
+
+  if (match === 'unmatched') {
+    query.where(function () {
+      this.whereNull('videos.code').orWhere('videos.code', '')
+        .orWhereNull('videos.name').orWhere('videos.name', '')
+        .orWhereNull('videos.cover_image').orWhere('videos.cover_image', '')
+        .orWhereNotExists(function (this: Knex.QueryBuilder) {
+          this.select(db.raw(1)).from('video_genres').whereRaw('video_genres.video_id = videos.id');
+        })
+        .orWhereNotExists(function (this: Knex.QueryBuilder) {
+          this.select(db.raw(1)).from('video_cast').whereRaw('video_cast.video_id = videos.id');
+        });
+    });
+  } else if (match === 'matched') {
+    query.whereNotNull('videos.code').where('videos.code', '!=', '')
+      .whereNotNull('videos.name').where('videos.name', '!=', '')
+      .whereNotNull('videos.cover_image').where('videos.cover_image', '!=', '')
+      .whereExists(function (this: Knex.QueryBuilder) {
+        this.select(db.raw(1)).from('video_genres').whereRaw('video_genres.video_id = videos.id');
+      })
+      .whereExists(function (this: Knex.QueryBuilder) {
+        this.select(db.raw(1)).from('video_cast').whereRaw('video_cast.video_id = videos.id');
+      });
   }
 
   return query;
