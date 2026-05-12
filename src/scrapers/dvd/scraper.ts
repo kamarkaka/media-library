@@ -57,12 +57,24 @@ export class DvdScraper extends PuppeteerScraper {
       if (match) {
         releaseDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
       } else {
-        // Try parsing with Date constructor (handles "30 Dec 2022" etc.)
-        const parsed = new Date(rawDate);
-        if (!isNaN(parsed.getTime())) {
-          releaseDate = parsed.toISOString().split('T')[0];
-        } else {
-          releaseDate = rawDate;
+        // Try "DD Mon YYYY" format
+        const ddMonYyyy = rawDate.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+        if (ddMonYyyy) {
+          const months: Record<string, string> = {
+            Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
+            Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
+          };
+          const mon = months[ddMonYyyy[2].charAt(0).toUpperCase() + ddMonYyyy[2].slice(1).toLowerCase()];
+          if (mon) {
+            releaseDate = `${ddMonYyyy[3]}-${mon}-${ddMonYyyy[1].padStart(2, '0')}`;
+          }
+        }
+        // Fallback: try Date constructor
+        if (!releaseDate) {
+          const parsed = new Date(rawDate);
+          if (!isNaN(parsed.getTime())) {
+            releaseDate = parsed.toISOString().split('T')[0];
+          }
         }
       }
     }

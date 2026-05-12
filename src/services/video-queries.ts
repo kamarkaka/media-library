@@ -157,17 +157,40 @@ export async function getRecentPlayback(): Promise<any | null> {
   return recent || null;
 }
 
-export async function getVideoNeighbors(video: { filename: string; id: string }) {
+export async function getVideoNeighbors(video: { release_date: string | null; id: string }) {
+  const rd = video.release_date;
+
+  // Previous: the video right before this one in release_date ASC NULLS LAST order
   const prevVideo = await db('videos')
-    .whereRaw('(filename < ? OR (filename = ? AND id < ?))', [video.filename, video.filename, video.id])
-    .orderBy('filename', 'desc')
+    .where(function () {
+      if (rd) {
+        // Earlier date, or same date with smaller id, or null date (nulls sort last, so they're "after")
+        this.where('release_date', '<', rd)
+          .orWhere(function () { this.where('release_date', rd).where('id', '<', video.id); });
+      } else {
+        // Current is null: only other nulls with smaller id come before
+        this.whereNull('release_date').where('id', '<', video.id);
+      }
+    })
+    .orderByRaw('release_date DESC NULLS FIRST')
     .orderBy('id', 'desc')
     .select('id', 'filename')
     .first();
 
+  // Next: the video right after this one in release_date ASC NULLS LAST order
   const nextVideo = await db('videos')
-    .whereRaw('(filename > ? OR (filename = ? AND id > ?))', [video.filename, video.filename, video.id])
-    .orderBy('filename', 'asc')
+    .where(function () {
+      if (rd) {
+        // Later date, or same date with larger id, or null date
+        this.where('release_date', '>', rd)
+          .orWhere(function () { this.where('release_date', rd).where('id', '>', video.id); })
+          .orWhereNull('release_date');
+      } else {
+        // Current is null: only other nulls with larger id come after
+        this.whereNull('release_date').where('id', '>', video.id);
+      }
+    })
+    .orderByRaw('release_date ASC NULLS LAST')
     .orderBy('id', 'asc')
     .select('id', 'filename')
     .first();
