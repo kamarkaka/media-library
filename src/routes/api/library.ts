@@ -6,6 +6,7 @@ import {
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
+import db from '../../db';
 
 const router = Router();
 
@@ -72,6 +73,36 @@ router.get('/validation-results', async (_req, res) => {
   try {
     const results = await getLatestValidationResults();
     res.json(results);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fix release_date format: convert "DD Mon YYYY" to "YYYY-MM-DD"
+router.post('/fix-dates', async (_req, res) => {
+  try {
+    const videos = await db('videos')
+      .select('id', 'release_date')
+      .whereNotNull('release_date')
+      .where('release_date', '!=', '');
+
+    const months: Record<string, string> = {
+      Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
+      Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
+    };
+    const ddMonYyyy = /^(\d{2}) ([A-Z][a-z]{2}) (\d{4})$/;
+    let fixed = 0;
+
+    for (const video of videos) {
+      const match = ddMonYyyy.exec(video.release_date);
+      if (match) {
+        const iso = `${match[3]}-${months[match[2]]}-${match[1]}`;
+        await db('videos').where('id', video.id).update({ release_date: iso });
+        fixed++;
+      }
+    }
+
+    res.json({ success: true, total: videos.length, fixed });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

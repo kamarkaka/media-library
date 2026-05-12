@@ -176,6 +176,39 @@
       });
   };
 
+  // Fix date formats
+  window.fixDateFormats = function () {
+    var btn = document.getElementById('fix-dates-btn');
+    var statusEl = document.getElementById('fix-dates-status');
+    btn.disabled = true;
+    btn.textContent = 'Fixing...';
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    statusEl.textContent = 'Processing...';
+    statusEl.className = 'text-sm text-gray-400';
+
+    fetch('/api/library/fix-dates', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        btn.disabled = false;
+        btn.textContent = 'Fix Date Formats';
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        if (data.error) {
+          statusEl.textContent = 'Error: ' + data.error;
+          statusEl.className = 'text-sm text-red-400';
+        } else {
+          statusEl.textContent = 'Fixed ' + data.fixed + ' of ' + data.total + ' dates';
+          statusEl.className = 'text-sm text-green-400';
+        }
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = 'Fix Date Formats';
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+      });
+  };
+
   // Expand/collapse validation details
   window.toggleValidationDetails = function (el) {
     var details = el.parentElement.querySelector('.validation-details');
