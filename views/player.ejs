@@ -68,8 +68,8 @@
       <div class="flex justify-between"><span class="text-gray-500">Maker</span><span class="text-gray-300 ml-2" data-view="maker"><%= video.maker || '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Label</span><span class="text-gray-300 ml-2" data-view="label"><%= video.label || '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Cover Image</span><span class="text-gray-300 truncate ml-2" data-view="cover_image"><% if (video.cover_image) { %><a href="<%= video.cover_image %>" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs"><%= video.cover_image %></a><% } else { %>—<% } %></span></div>
-      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Genres</span><span class="text-gray-300 ml-2" data-view="genres"><%= genres.length ? genres.map(function(g) { return g.name; }).join(', ') : '—' %></span></div>
-      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Cast</span><span class="text-gray-300 ml-2" data-view="cast"><%= cast.length ? cast.map(function(c) { return c.name; }).join(', ') : '—' %></span></div>
+      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Genres</span><span class="text-gray-300 ml-2" data-view="genres"><% if (genres.length) { genres.forEach(function(g, i) { %><a href="/?genre=<%= encodeURIComponent(g.name) %>" class="text-blue-400 hover:text-blue-300"><%= g.name %></a><%= i < genres.length - 1 ? ', ' : '' %><% }); } else { %>—<% } %></span></div>
+      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Cast</span><span class="text-gray-300 ml-2" data-view="cast"><% if (cast.length) { cast.forEach(function(c, i) { %><a href="/?cast=<%= encodeURIComponent(c.name) %>" class="text-blue-400 hover:text-blue-300"><%= c.name %></a><%= i < cast.length - 1 ? ', ' : '' %><% }); } else { %>—<% } %></span></div>
     </div>
 
     <!-- Edit form (hidden by default) -->
