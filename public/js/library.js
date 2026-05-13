@@ -400,7 +400,18 @@
     observer.observe(sentinel);
   }
 
+  var isCompact = grid && grid.dataset.compact === '1';
+
   function createVideoCard(video, playback) {
+    if (isCompact) {
+      return '<a href="/player/' + video.id + '" class="group bg-gray-800 rounded px-2 py-1.5 hover:bg-gray-700 transition-colors flex items-center gap-1.5 min-w-0">' +
+        '<svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>' +
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+        '</svg>' +
+        '<span class="text-xs text-gray-300 truncate">' + escapeHtml(video.filename) + '</span></a>';
+    }
+
     var progressHtml = '';
     if (playback && playback.position > 0) {
       var barStyle = video.length
