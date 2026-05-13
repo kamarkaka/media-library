@@ -106,6 +106,9 @@ router.put('/:id', async (req, res) => {
         updates[field] = val === '' ? null : val;
       }
     }
+    if ('matched' in req.body) {
+      updates.matched = req.body.matched ? 1 : 0;
+    }
 
     if ('genres' in req.body) {
       await syncRelation(req.params.id, req.body.genres || '', 'genres', 'video_genres', 'genre_id');

@@ -209,6 +209,32 @@
       });
   };
 
+  // Auto-match videos
+  window.autoMatchVideos = function () {
+    var statusEl = document.getElementById('auto-match-status');
+    setButtonBusy('auto-match-btn', true, 'Matching...', 'Auto-Match Videos');
+    statusEl.textContent = 'Processing...';
+    statusEl.className = 'text-sm text-gray-400';
+
+    fetch('/api/library/auto-match', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        setButtonBusy('auto-match-btn', false, 'Matching...', 'Auto-Match Videos');
+        if (data.error) {
+          statusEl.textContent = 'Error: ' + data.error;
+          statusEl.className = 'text-sm text-red-400';
+        } else {
+          statusEl.textContent = data.matched + ' matched, ' + data.unmatched + ' unmatched';
+          statusEl.className = 'text-sm text-green-400';
+        }
+      })
+      .catch(function (err) {
+        setButtonBusy('auto-match-btn', false, 'Matching...', 'Auto-Match Videos');
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+      });
+  };
+
   // Expand/collapse validation details
   window.toggleValidationDetails = function (el) {
     var details = el.parentElement.querySelector('.validation-details');

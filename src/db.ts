@@ -47,6 +47,7 @@ export async function initDatabase(): Promise<void> {
       t.integer('bitrate').nullable();
       t.float('framerate').nullable();
       t.integer('file_size').nullable();
+      t.integer('matched').notNullable().defaultTo(0);
       t.timestamp('created_at').defaultTo(db.fn.now());
       t.timestamp('updated_at').defaultTo(db.fn.now());
     });
@@ -131,6 +132,7 @@ export async function initDatabase(): Promise<void> {
     ['bitrate', 'INTEGER'],
     ['framerate', 'REAL'],
     ['file_size', 'INTEGER'],
+    ['matched', 'INTEGER DEFAULT 0'],
   ];
   for (const [name, type] of newCols) {
     if (!colNames.has(name)) {

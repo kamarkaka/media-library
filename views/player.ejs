@@ -43,6 +43,17 @@
     <% const displayTitle = video.name || video.filename; %>
     <h1 class="text-base font-semibold break-words mb-4"><%= displayTitle %></h1>
 
+    <div class="flex items-center justify-between mb-4">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="matched-toggle" data-video-id="<%= video.id %>" <%= video.matched ? 'checked' : '' %> class="hidden">
+        <div class="relative w-9 h-5">
+          <div class="w-9 h-5 rounded-full transition-colors <%= video.matched ? 'bg-green-500' : 'bg-gray-600' %>" id="matched-track"></div>
+          <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform <%= video.matched ? 'translate-x-4' : '' %>" id="matched-knob"></div>
+        </div>
+        <span class="text-sm text-gray-400">Matched</span>
+      </label>
+    </div>
+
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Details</h2>
       <button type="button" id="details-edit-btn" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Edit</button>

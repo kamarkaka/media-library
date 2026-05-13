@@ -49,18 +49,11 @@ async function run(): Promise<void> {
       videos = await db('videos').select('id', 'filename');
       console.log(`[scrape] Full scrape — ${videos.length} videos`);
     } else {
-      // Quick scrape: videos missing code, name, release_date, or cast
+      // Quick scrape: unmatched videos only
       videos = await db('videos')
-        .leftJoin('video_cast', 'videos.id', 'video_cast.video_id')
-        .where(function () {
-          this.whereNull('videos.code').orWhere('videos.code', '')
-            .orWhereNull('videos.name').orWhere('videos.name', '')
-            .orWhereNull('videos.release_date').orWhere('videos.release_date', '')
-            .orWhereNull('video_cast.video_id');
-        })
-        .groupBy('videos.id')
+        .where('videos.matched', '!=', 1)
         .select('videos.id', 'videos.filename');
-      console.log(`[scrape] Quick scrape — ${videos.length} videos with missing info`);
+      console.log(`[scrape] Quick scrape — ${videos.length} unmatched videos`);
     }
 
     progress({ total: videos.length });
@@ -99,6 +92,9 @@ async function run(): Promise<void> {
           if (metadata.maker) updates.maker = metadata.maker;
           if (metadata.label) updates.label = metadata.label;
           if (metadata.coverImage) updates.cover_image = metadata.coverImage;
+          if (metadata.code && metadata.name && metadata.coverImage && metadata.releaseDate) {
+            updates.matched = 1;
+          }
           if (Object.keys(updates).length > 0) {
             updates.updated_at = new Date().toISOString();
             console.log(`[scrape] ${label} ${video.filename} — updating: ${Object.keys(updates).join(', ')}`);

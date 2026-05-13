@@ -347,6 +347,33 @@
   var metaForm = document.getElementById('video-meta-form');
   var metaStatus = document.getElementById('meta-save-status');
 
+  // --- Matched toggle ---
+  var matchedToggle = document.getElementById('matched-toggle');
+  var matchedTrack = document.getElementById('matched-track');
+  var matchedKnob = document.getElementById('matched-knob');
+
+  function updateMatchedUI(checked) {
+    matchedTrack.className = 'w-9 h-5 rounded-full transition-colors ' + (checked ? 'bg-green-500' : 'bg-gray-600');
+    if (checked) { matchedKnob.classList.add('translate-x-4'); } else { matchedKnob.classList.remove('translate-x-4'); }
+  }
+
+  if (matchedToggle) {
+    matchedToggle.addEventListener('change', function () {
+      var checked = matchedToggle.checked;
+      updateMatchedUI(checked);
+
+      fetch('/api/videos/' + videoId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matched: checked ? 1 : 0 }),
+      }).catch(function (err) {
+        console.error('Failed to update matched:', err);
+        matchedToggle.checked = !checked;
+        updateMatchedUI(!checked);
+      });
+    });
+  }
+
   if (metaForm) {
     metaForm.addEventListener('submit', function (e) {
       e.preventDefault();

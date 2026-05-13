@@ -87,27 +87,9 @@ function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.Que
   }
 
   if (match === 'unmatched') {
-    query.where(function () {
-      this.whereNull('videos.code').orWhere('videos.code', '')
-        .orWhereNull('videos.name').orWhere('videos.name', '')
-        .orWhereNull('videos.cover_image').orWhere('videos.cover_image', '')
-        .orWhereNotExists(function (this: Knex.QueryBuilder) {
-          this.select(db.raw(1)).from('video_genres').whereRaw('video_genres.video_id = videos.id');
-        })
-        .orWhereNotExists(function (this: Knex.QueryBuilder) {
-          this.select(db.raw(1)).from('video_cast').whereRaw('video_cast.video_id = videos.id');
-        });
-    });
+    query.where('videos.matched', '!=', 1);
   } else if (match === 'matched') {
-    query.whereNotNull('videos.code').where('videos.code', '!=', '')
-      .whereNotNull('videos.name').where('videos.name', '!=', '')
-      .whereNotNull('videos.cover_image').where('videos.cover_image', '!=', '')
-      .whereExists(function (this: Knex.QueryBuilder) {
-        this.select(db.raw(1)).from('video_genres').whereRaw('video_genres.video_id = videos.id');
-      })
-      .whereExists(function (this: Knex.QueryBuilder) {
-        this.select(db.raw(1)).from('video_cast').whereRaw('video_cast.video_id = videos.id');
-      });
+    query.where('videos.matched', 1);
   }
 
   return query;

@@ -108,4 +108,28 @@ router.post('/fix-dates', async (_req, res) => {
   }
 });
 
+router.post('/auto-match', async (_req, res) => {
+  try {
+    const matched = await db('videos')
+      .whereNotNull('code').where('code', '!=', '')
+      .whereNotNull('name').where('name', '!=', '')
+      .whereNotNull('cover_image').where('cover_image', '!=', '')
+      .whereNotNull('release_date').where('release_date', '!=', '')
+      .update({ matched: 1 });
+
+    const unmatched = await db('videos')
+      .where(function () {
+        this.whereNull('code').orWhere('code', '')
+          .orWhereNull('name').orWhere('name', '')
+          .orWhereNull('cover_image').orWhere('cover_image', '')
+          .orWhereNull('release_date').orWhere('release_date', '');
+      })
+      .update({ matched: 0 });
+
+    res.json({ success: true, matched, unmatched });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
