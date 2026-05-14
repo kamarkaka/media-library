@@ -13,7 +13,7 @@ A self-hosted video library web app (like a simpler Jellyfin/Plex). Single-owner
 - `npm start` — run compiled output (`node dist/index.js`)
 - `npm run setup-auth` — interactive CLI to set login credentials
 
-System dependency: `ffprobe` (from FFmpeg) must be on PATH for video metadata extraction during scan.
+System dependency: FFmpeg (`ffprobe` + `ffmpeg`) must be on PATH — `ffprobe` for video metadata extraction during scan, `ffmpeg` for HLS transcoding during playback.
 
 No test framework is configured.
 

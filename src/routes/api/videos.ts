@@ -3,6 +3,10 @@ import fs from 'fs';
 import mime from 'mime-types';
 import db from '../../db';
 import { queryVideos, getPlaybackMap, getVideoNeighbors, parseVideoFilters } from '../../services/video-queries';
+import {
+  generateMasterPlaylist, isTranscoded, isTranscoding,
+  getPlaylistContent, getSegmentPath, startTranscoding,
+} from '../../services/hls-transcoder';
 
 const router = Router();
 
@@ -168,6 +172,50 @@ router.get('/:id/neighbors', async (req, res) => {
     return res.status(404).json({ error: 'Video not found' });
   }
   res.json(await getVideoNeighbors(video));
+});
+
+// HLS master playlist
+router.get('/:id/hls', async (req, res) => {
+  const video: any = await db('videos').where('id', req.params.id).first();
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const playlist = generateMasterPlaylist(video.id, video.height);
+  res.type('application/vnd.apple.mpegurl').send(playlist);
+});
+
+// HLS variant playlist (triggers transcoding if needed)
+router.get('/:id/hls/:quality', async (req, res) => {
+  const video: any = await db('videos').where('id', req.params.id).first();
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const { quality } = req.params;
+
+  if (!isTranscoded(video.id, quality)) {
+    try {
+      // startTranscoding is idempotent — if already running, it waits for the playlist
+      await startTranscoding(video.id, quality, video.full_path, video.video_codec, video.audio_codec);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  const content = getPlaylistContent(video.id, quality);
+  if (!content) return res.status(500).json({ error: 'Playlist not available' });
+
+  // Rewrite segment paths to include the quality prefix
+  const rewritten = content.replace(/^(seg\d+\.ts)$/gm, `/api/videos/${video.id}/hls/${quality}/$1`);
+  res.type('application/vnd.apple.mpegurl').send(rewritten);
+});
+
+// HLS segment file
+router.get('/:id/hls/:quality/:segment', async (req, res) => {
+  const { id, quality, segment } = req.params;
+  if (!/^seg\d+\.ts$/.test(segment)) return res.status(400).json({ error: 'Invalid segment' });
+
+  const segPath = getSegmentPath(id, quality, segment);
+  if (!fs.existsSync(segPath)) return res.status(404).json({ error: 'Segment not found' });
+
+  res.type('video/mp2t').sendFile(segPath);
 });
 
 export default router;

@@ -262,6 +262,30 @@
   setupToggle('full-scan');
   setupToggle('full-scrape');
 
+  // Seek step
+  var seekStepSelect = document.getElementById('seek-step-select');
+  var seekStepStatus = document.getElementById('seek-step-status');
+  if (seekStepSelect) {
+    seekStepSelect.addEventListener('change', function () {
+      var step = seekStepSelect.value;
+      fetch('/api/library/settings/seek-step', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: parseInt(step, 10) }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          seekStepStatus.textContent = data.success ? 'Saved' : (data.error || 'Failed');
+          seekStepStatus.className = 'text-sm ' + (data.success ? 'text-green-400' : 'text-red-400');
+          setTimeout(function () { seekStepStatus.textContent = ''; }, 2000);
+        })
+        .catch(function (err) {
+          seekStepStatus.textContent = 'Failed: ' + err.message;
+          seekStepStatus.className = 'text-sm text-red-400';
+        });
+    });
+  }
+
   // Change password
   if (passwordForm) {
     passwordForm.addEventListener('submit', function (e) {

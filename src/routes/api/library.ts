@@ -6,7 +6,7 @@ import {
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
-import db from '../../db';
+import db, { setSetting } from '../../db';
 
 const router = Router();
 
@@ -130,6 +130,15 @@ router.post('/auto-match', async (_req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+router.put('/settings/seek-step', async (req, res) => {
+  const step = parseInt(req.body.step, 10);
+  if (![5, 10, 15, 30].includes(step)) {
+    return res.status(400).json({ error: 'Invalid step value' });
+  }
+  await setSetting('seek_step', String(step));
+  res.json({ success: true, step });
 });
 
 export default router;

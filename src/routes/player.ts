@@ -26,6 +26,15 @@ router.get('/:id', async (req, res) => {
 
   const { prev: prevVideo, next: nextVideo } = await getVideoNeighbors(video);
 
+  const seekStepRow = await db('settings').where('key', 'seek_step').first();
+  const seekStep = seekStepRow ? parseInt(seekStepRow.value, 10) || 10 : 10;
+
+  // Determine if the video can be played directly (H.264/AAC in MP4/M4V container)
+  const ext = (video.full_path || '').split('.').pop()?.toLowerCase();
+  const canDirectPlay = video.video_codec === 'h264'
+    && (video.audio_codec === 'aac' || video.audio_codec === 'mp3')
+    && (ext === 'mp4' || ext === 'm4v');
+
   res.render('player', {
     title: video.filename,
     video,
@@ -34,6 +43,8 @@ router.get('/:id', async (req, res) => {
     cast,
     prevVideo,
     nextVideo,
+    seekStep,
+    canDirectPlay,
   });
 });
 

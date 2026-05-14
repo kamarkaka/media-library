@@ -149,6 +149,22 @@
   </section>
   <% } %>
 
+  <!-- Player Settings -->
+  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Player Settings</h2>
+    <div class="flex items-center gap-4">
+      <label class="text-sm text-gray-400">Seek step</label>
+      <select id="seek-step-select" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
+        <option value="5" <%= seekStep === 5 ? 'selected' : '' %>>5 seconds</option>
+        <option value="10" <%= seekStep === 10 ? 'selected' : '' %>>10 seconds</option>
+        <option value="15" <%= seekStep === 15 ? 'selected' : '' %>>15 seconds</option>
+        <option value="30" <%= seekStep === 30 ? 'selected' : '' %>>30 seconds</option>
+      </select>
+      <span id="seek-step-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mt-2">Controls how many seconds the rewind/fast-forward buttons and arrow keys skip.</p>
+  </section>
+
   <!-- Change Password -->
   <section class="bg-gray-800 rounded-lg p-6">
     <h2 class="text-lg font-semibold mb-4">Change Password</h2>

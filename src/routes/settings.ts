@@ -10,6 +10,8 @@ router.get('/', async (req, res) => {
   const countResult = (await db('videos').count('* as count').first()) as any;
 
   const validationResults = await getLatestValidationResults();
+  const seekStepRow = await db('settings').where('key', 'seek_step').first();
+  const seekStep = seekStepRow ? parseInt(seekStepRow.value, 10) || 10 : 10;
 
   res.render('settings', {
     title: 'Settings',
@@ -17,6 +19,7 @@ router.get('/', async (req, res) => {
     videoCount: countResult?.count || 0,
     scrapers: listScrapers(),
     validationResults,
+    seekStep,
   });
 });
 
