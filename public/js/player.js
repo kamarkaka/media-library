@@ -97,8 +97,13 @@
       if (video.paused) { video.play(); } else { video.pause(); }
     });
   }
+  // Tap on video: toggle overlay visibility, not play/pause
   video.addEventListener('click', function () {
-    if (video.paused) { video.play(); } else { video.pause(); }
+    if (controlsVisible) {
+      hideControls();
+    } else {
+      showControls();
+    }
   });
   video.addEventListener('play', updatePlayIcon);
   video.addEventListener('pause', updatePlayIcon);
@@ -153,20 +158,42 @@
     document.addEventListener('touchend', function () { seeking = false; });
   }
 
-  // Fullscreen
+  // Fullscreen — use webkitEnterFullscreen on iOS Safari (no Fullscreen API)
+  function enterFullscreen() {
+    if (container.requestFullscreen) {
+      container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen();
+    } else if (video.webkitEnterFullscreen) {
+      // iOS Safari: only the video element can go fullscreen
+      video.webkitEnterFullscreen();
+    }
+  }
+
+  function exitFullscreen() {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  }
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
   if (btnFullscreen) {
     btnFullscreen.addEventListener('click', function () {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        container.requestFullscreen();
-      }
+      if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
     });
-    document.addEventListener('fullscreenchange', function () {
-      var fs = !!document.fullscreenElement;
+
+    function onFsChange() {
+      var fs = isFullscreen();
       iconFsEnter.classList.toggle('hidden', fs);
       iconFsExit.classList.toggle('hidden', !fs);
-    });
+    }
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
   }
 
   // Keyboard shortcuts
@@ -184,21 +211,38 @@
       video.currentTime = Math.min(video.duration || 0, video.currentTime + seekStep);
     } else if (e.key === 'f') {
       e.preventDefault();
-      if (document.fullscreenElement) { document.exitFullscreen(); } else { container.requestFullscreen(); }
+      if (isFullscreen()) { exitFullscreen(); } else { enterFullscreen(); }
     }
   });
 
-  // Auto-hide controls
+  // Auto-hide controls after 3 seconds of inactivity
   var hideTimeout;
-  container.addEventListener('mousemove', function () {
+  var controlsVisible = false;
+
+  function showControls() {
     controls.style.opacity = '1';
+    controlsVisible = true;
     clearTimeout(hideTimeout);
     if (!video.paused) {
-      hideTimeout = setTimeout(function () { controls.style.opacity = '0'; }, 2500);
+      hideTimeout = setTimeout(hideControls, 3000);
     }
-  });
-  container.addEventListener('mouseleave', function () {
-    if (!video.paused) controls.style.opacity = '0';
+  }
+
+  function hideControls() {
+    if (!video.paused) {
+      controls.style.opacity = '0';
+      controlsVisible = false;
+    }
+  }
+
+  container.addEventListener('mousemove', showControls);
+  container.addEventListener('mouseleave', hideControls);
+  // Touch: handled by video click handler above
+
+  // Show controls when paused, start hide timer when playing
+  video.addEventListener('pause', showControls);
+  video.addEventListener('play', function () {
+    hideTimeout = setTimeout(hideControls, 3000);
   });
 
   // --- Quality Selector ---
