@@ -13,29 +13,40 @@
   var hlsInstance = null;
 
   // --- Initialize video source ---
+  function seekToResume() {
+    if (resumePosition > 0 && video.duration && isFinite(video.duration)) {
+      video.currentTime = Math.min(resumePosition, video.duration);
+    }
+  }
+
   if (directPlay) {
     video.src = streamUrl;
+    video.addEventListener('loadedmetadata', seekToResume, { once: true });
   } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
     hlsInstance = new Hls();
     hlsInstance.loadSource(hlsUrl);
     hlsInstance.attachMedia(video);
+    // Wait for HLS manifest + media to be ready before seeking
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
       setupQualitySelector();
     });
+    hlsInstance.on(Hls.Events.LEVEL_LOADED, function () {
+      seekToResume();
+    });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari native HLS
     video.src = hlsUrl;
+    video.addEventListener('loadedmetadata', seekToResume, { once: true });
   } else {
-    // Fallback to direct stream
     video.src = streamUrl;
+    video.addEventListener('loadedmetadata', seekToResume, { once: true });
   }
 
-  // Resume position
-  video.addEventListener('loadedmetadata', function () {
-    if (resumePosition > 0) {
-      video.currentTime = resumePosition;
+  // Duration may arrive late (especially with HLS) — update display when it changes
+  video.addEventListener('durationchange', function () {
+    if (video.duration && isFinite(video.duration)) {
+      timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
     }
-  }, { once: true });
+  });
 
   // --- Cover image overlay ---
   var coverOverlay = document.getElementById('cover-overlay');
@@ -109,16 +120,18 @@
   video.addEventListener('pause', updatePlayIcon);
 
   // Rewind / Forward
+  function getDuration() { return (video.duration && isFinite(video.duration)) ? video.duration : 0; }
   if (btnRewind) btnRewind.addEventListener('click', function () { video.currentTime = Math.max(0, video.currentTime - seekStep); });
-  if (btnForward) btnForward.addEventListener('click', function () { video.currentTime = Math.min(video.duration || 0, video.currentTime + seekStep); });
+  if (btnForward) btnForward.addEventListener('click', function () { var d = getDuration(); if (d) video.currentTime = Math.min(d, video.currentTime + seekStep); });
 
   // Time + progress update
   video.addEventListener('timeupdate', function () {
-    if (!video.duration) return;
-    var pct = (video.currentTime / video.duration) * 100;
+    var d = getDuration();
+    if (!d) return;
+    var pct = (video.currentTime / d) * 100;
     seekProgress.style.width = pct + '%';
     seekHandle.style.left = 'calc(' + pct + '% - 6px)';
-    timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+    timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(d);
   });
 
   // Buffer progress
@@ -132,9 +145,11 @@
   var seeking = false;
 
   function seekTo(e) {
+    var d = getDuration();
+    if (!d) return;
     var rect = seekBar.getBoundingClientRect();
     var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    video.currentTime = pct * (video.duration || 0);
+    video.currentTime = pct * d;
   }
 
   if (seekBar) {
