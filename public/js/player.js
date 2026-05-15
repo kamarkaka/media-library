@@ -179,7 +179,7 @@
     seekBuffer.style.width = (end / video.duration * 100) + '%';
   });
 
-  // Seek bar click/drag
+  // Seek bar drag (handle only, not bar click)
   var seeking = false;
 
   function seekTo(e) {
@@ -190,20 +190,19 @@
     video.currentTime = pct * d;
   }
 
-  if (seekBar) {
-    seekBar.addEventListener('mousedown', function (e) {
+  if (seekHandle) {
+    seekHandle.addEventListener('mousedown', function (e) {
+      e.preventDefault();
       seeking = true;
-      seekTo(e);
     });
     document.addEventListener('mousemove', function (e) {
       if (seeking) seekTo(e);
     });
     document.addEventListener('mouseup', function () { seeking = false; });
 
-    // Touch support
-    seekBar.addEventListener('touchstart', function (e) {
+    seekHandle.addEventListener('touchstart', function (e) {
+      e.stopPropagation();
       seeking = true;
-      seekTo(e.touches[0]);
     }, { passive: true });
     document.addEventListener('touchmove', function (e) {
       if (seeking) seekTo(e.touches[0]);
