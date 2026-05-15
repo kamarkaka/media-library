@@ -198,7 +198,7 @@
     document.addEventListener('mousemove', function (e) {
       if (seeking) seekTo(e);
     });
-    document.addEventListener('mouseup', function () { seeking = false; });
+    document.addEventListener('mouseup', function () { if (seeking) { seeking = false; showControls(); } });
 
     seekHandle.addEventListener('touchstart', function (e) {
       e.stopPropagation();
@@ -207,7 +207,7 @@
     document.addEventListener('touchmove', function (e) {
       if (seeking) seekTo(e.touches[0]);
     });
-    document.addEventListener('touchend', function () { seeking = false; });
+    document.addEventListener('touchend', function () { if (seeking) { seeking = false; showControls(); } });
   }
 
   // Fullscreen — use webkitEnterFullscreen on iOS Safari (no Fullscreen API)
@@ -281,7 +281,7 @@
   }
 
   function hideControls() {
-    if (!video.paused) {
+    if (!video.paused && !seeking) {
       controls.style.opacity = '0';
       controlsVisible = false;
     }
