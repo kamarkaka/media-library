@@ -42,6 +42,13 @@
   object-fit: contain;
 }
 
+/* Prevent double-tap zoom and text selection on player overlay */
+#video-container {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Show controls on hover or when paused */
 #video-container:hover #player-controls,
 #video-container.paused #player-controls {

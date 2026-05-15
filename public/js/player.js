@@ -70,8 +70,6 @@
   var btnPlay = document.getElementById('btn-play');
   var iconPlay = document.getElementById('icon-play');
   var iconPause = document.getElementById('icon-pause');
-  var btnRewind = document.getElementById('btn-rewind');
-  var btnForward = document.getElementById('btn-forward');
   var btnFullscreen = document.getElementById('btn-fullscreen');
   var iconFsEnter = document.getElementById('icon-fs-enter');
   var iconFsExit = document.getElementById('icon-fs-exit');
@@ -108,21 +106,61 @@
       if (video.paused) { video.play(); } else { video.pause(); }
     });
   }
-  // Tap on video: toggle overlay visibility, not play/pause
-  video.addEventListener('click', function () {
-    if (controlsVisible) {
-      hideControls();
+
+  // Single tap: toggle overlay. Double tap: play/pause.
+  var tapTimer = null;
+  video.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (tapTimer) {
+      clearTimeout(tapTimer);
+      tapTimer = null;
+      if (video.paused) { video.play(); } else { video.pause(); }
     } else {
-      showControls();
+      tapTimer = setTimeout(function () {
+        tapTimer = null;
+        if (controlsVisible) { hideControls(); } else { showControls(); }
+      }, 250);
     }
   });
+
+  // Swipe to seek (touch only)
+  var touchStartX = 0;
+  var touchStartTime = 0;
+  var swiping = false;
+
+  container.addEventListener('touchstart', function (e) {
+    if (e.target.closest('#player-controls') || e.target.closest('#quality-wrapper')) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartTime = Date.now();
+    swiping = true;
+  }, { passive: true });
+
+  container.addEventListener('touchend', function (e) {
+    if (!swiping) return;
+    swiping = false;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    var dt = Date.now() - touchStartTime;
+    // Require minimum 50px swipe within 500ms
+    if (Math.abs(dx) > 50 && dt < 500) {
+      if (dx > 0) {
+        video.currentTime = Math.min(getDuration() || video.currentTime, video.currentTime + seekStep);
+      } else {
+        video.currentTime = Math.max(0, video.currentTime - seekStep);
+      }
+    }
+  }, { passive: true });
+
+  // Prevent zoom on double-tap for all overlay elements
+  container.addEventListener('touchend', function (e) {
+    if (e.target.closest('#player-controls') || e.target.closest('#quality-wrapper')) {
+      e.preventDefault();
+    }
+  });
+
   video.addEventListener('play', updatePlayIcon);
   video.addEventListener('pause', updatePlayIcon);
 
-  // Rewind / Forward
   function getDuration() { return (video.duration && isFinite(video.duration)) ? video.duration : 0; }
-  if (btnRewind) btnRewind.addEventListener('click', function () { video.currentTime = Math.max(0, video.currentTime - seekStep); });
-  if (btnForward) btnForward.addEventListener('click', function () { var d = getDuration(); if (d) video.currentTime = Math.min(d, video.currentTime + seekStep); });
 
   // Time + progress update
   video.addEventListener('timeupdate', function () {
