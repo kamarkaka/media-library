@@ -18,7 +18,7 @@ export interface AppConfig {
 export const config: AppConfig = {
   port: parseInt(process.env.PORT || '3000', 10),
   dbPath: process.env.DB_PATH || path.join(__dirname, '../data/library.db'),
-  scraperType: process.env.SCRAPER_TYPE || 'dvd',
+  scraperType: process.env.SCRAPER_TYPE || 'javtrailers',
   authUsername: 'admin',
   authPasswordHash: '',
   sessionSecret: '',

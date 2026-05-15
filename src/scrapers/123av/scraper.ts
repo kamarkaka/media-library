@@ -3,8 +3,8 @@ import * as cheerio from 'cheerio';
 import { ScrapedMetadata } from '../base/types';
 import { PuppeteerScraper } from '../base/puppeteer-base';
 
-export class DvdScraper extends PuppeteerScraper {
-  protected scraperType = 'dvd';
+export class A123AVScraper extends PuppeteerScraper {
+  protected scraperType = '123av';
 
   protected buildUrl(_filename: string): string | null {
     return null;
@@ -13,26 +13,26 @@ export class DvdScraper extends PuppeteerScraper {
   protected async extractMetadata(page: Page): Promise<ScrapedMetadata | null> {
     const pageTitle = await page.title();
     const pageUrl = page.url();
-    console.log(`[scraper:dvd] Page loaded — title: "${pageTitle}", url: ${pageUrl}`);
+    console.log(`[scraper:123av] Page loaded — title: "${pageTitle}", url: ${pageUrl}`);
 
     // Extract #description HTML from the page
-    const descHtml = await page.evaluate('document.getElementById("description")?.innerHTML || ""');
+    const descHtml = await page.evaluate('document.getElementById("page-video")?.innerHTML || ""');
     if (!descHtml) {
-      console.warn(`[scraper:dvd] #description element not found or empty`);
+      console.warn(`[scraper:123av] #description element not found or empty`);
       return null;
     }
-    console.log(`[scraper:dvd] Got #description HTML (${(descHtml as string).length} chars)`);
+    console.log(`[scraper:123av] Got #description HTML (${(descHtml as string).length} chars)`);
 
     const $ = cheerio.load(descHtml as string);
 
     // Name
-    const name = $('h1.lead').text().trim() || undefined;
-    console.log(`[scraper:dvd] name: ${name || '(not found)'}`);
+    const name = $('h1').text().trim() || undefined;
+    console.log(`[scraper:123av] name: ${name || '(not found)'}`);
 
     // Helper: find text next to a label span
     const findByLabel = (label: string): string | undefined => {
       let result: string | undefined;
-      $('span').each((_, el) => {
+      $('#details .detail-item span').each((_, el) => {
         const span = $(el);
         if (span.text().includes(label)) {
           const parent = span.parent();
@@ -45,12 +45,12 @@ export class DvdScraper extends PuppeteerScraper {
     };
 
     // Code
-    const code = findByLabel('DVD ID');
-    console.log(`[scraper:dvd] code: ${code || '(not found)'}`);
+    const code = findByLabel('コード');
+    console.log(`[scraper:123av] code: ${code || '(not found)'}`);
 
     // Release date — normalize to YYYY-MM-DD
     let releaseDate: string | undefined;
-    const rawDate = findByLabel('商品発売日');
+    const rawDate = findByLabel('リリース日');
     if (rawDate) {
       // Try YYYY/MM/DD or YYYY-MM-DD or YYYY年MM月DD formats
       const match = rawDate.match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
@@ -78,51 +78,41 @@ export class DvdScraper extends PuppeteerScraper {
         }
       }
     }
-    console.log(`[scraper:dvd] releaseDate: ${releaseDate || '(not found)'}`);
+    console.log(`[scraper:123av] releaseDate: ${releaseDate || '(not found)'}`);
 
     // Director
     const director = findByLabel('監督');
-    console.log(`[scraper:dvd] director: ${director || '(not found)'}`);
+    console.log(`[scraper:123av] director: ${director || '(not found)'}`);
 
     // Maker
-    const maker = $('a[href*="/studios/"]').first().text().trim() || undefined;
-    console.log(`[scraper:dvd] maker: ${maker || '(not found)'}`);
+    const maker = $('#details a[href*="makers/"]').first().text().trim() || undefined;
+    console.log(`[scraper:123av] maker: ${maker || '(not found)'}`);
 
     // Genres
     const genres: string[] = [];
-    $('a[href*="/categories/"]').each((_, el) => {
+    $('#details .genre a[href*="genres/"]').each((_, el) => {
       const text = $(el).text().trim();
       if (text) genres.push(text);
     });
-    console.log(`[scraper:dvd] genres (${genres.length}): ${genres.join(', ') || '(none)'}`);
+    console.log(`[scraper:123av] genres (${genres.length}): ${genres.join(', ') || '(none)'}`);
 
     // Cast
     const cast: string[] = [];
-    $('a[href*="/casts/"]').each((_, el) => {
+    $('#details a[href*="actresses/"]').each((_, el) => {
       const text = $(el).text().trim();
       if (text) cast.push(text);
     });
-    console.log(`[scraper:dvd] cast (${cast.length}): ${cast.join(', ') || '(none)'}`);
+    console.log(`[scraper:123av] cast (${cast.length}): ${cast.join(', ') || '(none)'}`);
 
     // Cover image
     let coverImage: string | undefined;
     if (code) {
-      $('img').each((_, el) => {
-        const img = $(el);
-        const alt = img.attr('alt') || '';
-        if (alt.includes(code)) {
-          const dataSrc = img.attr('data-src');
-          const src = img.attr('src');
-          coverImage = (dataSrc && !dataSrc.startsWith('data:')) ? dataSrc
-            : (src && !src.startsWith('data:')) ? src : undefined;
-          return false; // break
-        }
-      });
+      coverImage = $('#player').attr('data-poster') || '';
     }
-    console.log(`[scraper:dvd] coverImage: ${coverImage || '(not found)'}`);
+    console.log(`[scraper:123av] coverImage: ${coverImage || '(not found)'}`);
 
     return { name, code, releaseDate, director, maker, genres, cast, coverImage };
   }
 }
 
-export function createScraper() { return new DvdScraper(); }
+export function createScraper() { return new A123AVScraper(); }

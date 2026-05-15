@@ -36,7 +36,7 @@ No test framework is configured.
 - `resolver.ts` — must export `resolveSourceUrl(filename) → URL` and `closeResolver()` (optional)
 - `validator.ts` — must export `getTestConfig(): ValidatorTestConfig` for automated validation (optional)
 
-The active scraper is set via `SCRAPER_TYPE` env var (default: `dvd`). Base types are in `src/scrapers/base/types.ts`; loader logic is in `src/scrapers/base/index.ts`.
+The active scraper is set via `SCRAPER_TYPE` env var (default: `javtrailers`). Base types are in `src/scrapers/base/types.ts`; loader logic is in `src/scrapers/base/index.ts`.
 
 **Video queries** (`src/services/video-queries.ts`): Centralized query builder for filtering, sorting, pagination, and playback state lookups — shared by both page routes and API routes.
 

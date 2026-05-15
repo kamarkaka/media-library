@@ -89,7 +89,7 @@ src/scrapers/
     noop.ts                  # NoOp scraper (returns null, used as fallback)
     puppeteer-base.ts        # Abstract base class for Puppeteer-based scrapers
     types.ts                 # Scraper and ScrapedMetadata interfaces
-  dvd/                       # Example scraper implementation
+  javtrailers/               # Default scraper implementation
     config.ts                # Scraper-specific constants (URLs, etc.)
     resolver.ts              # Resolves a video filename → source URL
     scraper.ts               # Extracts metadata from the source URL
