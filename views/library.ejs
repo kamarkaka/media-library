@@ -49,11 +49,51 @@
       <% }) %>
     </div>
 
-    <% if (pagination.hasMore) { %>
-    <div id="scroll-sentinel" class="py-8 text-center text-gray-600 text-sm"
-         data-page="<%= pagination.page %>"
-         data-filters='<%- JSON.stringify({ q: currentFilters.q || '', genre: (currentFilters.genre || []).join(","), director: (currentFilters.director || []).join(","), maker: (currentFilters.maker || []).join(","), label: (currentFilters.label || []).join(","), cast: (currentFilters.cast || []).join(","), match: currentFilters.match || '', sort: currentFilters.sort }) %>'>
-      Loading more...
+    <% if (pagination.totalPages > 1) { %>
+    <%
+      function pageUrl(p) {
+        var params = new URLSearchParams();
+        if (currentFilters.q) params.set('q', currentFilters.q);
+        if (currentFilters.genre && currentFilters.genre.length) params.set('genre', currentFilters.genre.join(','));
+        if (currentFilters.cast && currentFilters.cast.length) params.set('cast', currentFilters.cast.join(','));
+        if (currentFilters.director && currentFilters.director.length) params.set('director', currentFilters.director.join(','));
+        if (currentFilters.maker && currentFilters.maker.length) params.set('maker', currentFilters.maker.join(','));
+        if (currentFilters.label && currentFilters.label.length) params.set('label', currentFilters.label.join(','));
+        if (currentFilters.match) params.set('match', currentFilters.match);
+        if (currentFilters.sort && currentFilters.sort !== 'release_date') params.set('sort', currentFilters.sort);
+        if (p > 1) params.set('page', String(p));
+        var qs = params.toString();
+        return '/' + (qs ? '?' + qs : '');
+      }
+    %>
+    <div class="flex items-center justify-center gap-2 mt-6 mb-2">
+      <% if (pagination.page > 1) { %>
+      <a href="<%= pageUrl(pagination.page - 1) %>" class="px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">Prev</a>
+      <% } %>
+
+      <% var startPage = Math.max(1, pagination.page - 2); %>
+      <% var endPage = Math.min(pagination.totalPages, startPage + 4); %>
+      <% startPage = Math.max(1, endPage - 4); %>
+
+      <% if (startPage > 1) { %>
+      <a href="<%= pageUrl(1) %>" class="px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">1</a>
+      <% if (startPage > 2) { %><span class="text-gray-500 text-sm px-1">...</span><% } %>
+      <% } %>
+
+      <% for (var p = startPage; p <= endPage; p++) { %>
+      <a href="<%= pageUrl(p) %>" class="px-3 py-1.5 rounded text-sm transition-colors <%= p === pagination.page ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>"><%= p %></a>
+      <% } %>
+
+      <% if (endPage < pagination.totalPages) { %>
+      <% if (endPage < pagination.totalPages - 1) { %><span class="text-gray-500 text-sm px-1">...</span><% } %>
+      <a href="<%= pageUrl(pagination.totalPages) %>" class="px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"><%= pagination.totalPages %></a>
+      <% } %>
+
+      <% if (pagination.page < pagination.totalPages) { %>
+      <a href="<%= pageUrl(pagination.page + 1) %>" class="px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">Next</a>
+      <% } %>
+
+      <span class="text-xs text-gray-500 ml-2"><%= pagination.total %> videos</span>
     </div>
     <% } %>
 

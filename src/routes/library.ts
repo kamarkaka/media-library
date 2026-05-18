@@ -4,7 +4,7 @@ import { queryVideos, getPlaybackMap, getRecentPlayback, parseVideoFilters } fro
 const router = Router();
 
 router.get('/', async (req, res) => {
-  const filters = { ...parseVideoFilters(req.query as Record<string, any>), page: 1, pageSize: 24 };
+  const filters = parseVideoFilters(req.query as Record<string, any>);
   const result = await queryVideos(filters);
   const playbackMap = await getPlaybackMap(result.videos.map((v: any) => v.id));
   const recentPlayback = await getRecentPlayback();
