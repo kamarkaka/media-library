@@ -130,6 +130,43 @@
     </div>
   </section>
 
+  <!-- Batch Replace -->
+  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Batch Replace</h2>
+
+    <div class="mb-4">
+      <h3 class="text-sm font-medium text-gray-400 mb-2">Genres</h3>
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="genre-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+          <option value="">Source genre...</option>
+        </select>
+        <span class="text-gray-500 text-sm">&rarr;</span>
+        <select id="genre-dest" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+          <option value="">Destination genre...</option>
+        </select>
+        <button id="genre-replace-btn" onclick="batchReplace('genres')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
+        <span id="genre-replace-status" class="text-sm text-gray-400"></span>
+      </div>
+      <p class="text-xs text-gray-600 mt-1">Replaces source genre with destination on all videos. Videos with both already will just have the source removed.</p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-400 mb-2">Cast</h3>
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="cast-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+          <option value="">Source cast...</option>
+        </select>
+        <span class="text-gray-500 text-sm">&rarr;</span>
+        <select id="cast-dest" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+          <option value="">Destination cast...</option>
+        </select>
+        <button id="cast-replace-btn" onclick="batchReplace('cast')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
+        <span id="cast-replace-status" class="text-sm text-gray-400"></span>
+      </div>
+      <p class="text-xs text-gray-600 mt-1">Replaces source cast member with destination on all videos. Videos with both already will just have the source removed.</p>
+    </div>
+  </section>
+
   <!-- Validation Results -->
   <% if (validationResults && validationResults.length > 0) { %>
   <section class="bg-gray-800 rounded-lg p-6 mb-6">

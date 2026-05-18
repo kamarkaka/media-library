@@ -293,6 +293,78 @@
     }
   };
 
+  // Batch replace
+  function populateDropdowns(type) {
+    var endpoint = type === 'genres' ? '/api/genres' : '/api/cast';
+    fetch(endpoint)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var items = data.map(function (item) { return typeof item === 'string' ? item : item.name; });
+        var sourceEl = document.getElementById(type === 'genres' ? 'genre-source' : 'cast-source');
+        var destEl = document.getElementById(type === 'genres' ? 'genre-dest' : 'cast-dest');
+        if (!sourceEl || !destEl) return;
+        items.forEach(function (name) {
+          var opt1 = document.createElement('option');
+          opt1.value = name;
+          opt1.textContent = name;
+          sourceEl.appendChild(opt1);
+          var opt2 = document.createElement('option');
+          opt2.value = name;
+          opt2.textContent = name;
+          destEl.appendChild(opt2);
+        });
+      })
+      .catch(function () {});
+  }
+  populateDropdowns('genres');
+  populateDropdowns('cast');
+
+  window.batchReplace = function (type) {
+    var prefix = type === 'genres' ? 'genre' : 'cast';
+    var sourceEl = document.getElementById(prefix + '-source');
+    var destEl = document.getElementById(prefix + '-dest');
+    var statusEl = document.getElementById(prefix + '-replace-status');
+    var source = sourceEl.value;
+    var destination = destEl.value;
+
+    if (!source || !destination) {
+      statusEl.textContent = 'Select both source and destination';
+      statusEl.className = 'text-sm text-yellow-400';
+      return;
+    }
+    if (source === destination) {
+      statusEl.textContent = 'Source and destination must be different';
+      statusEl.className = 'text-sm text-yellow-400';
+      return;
+    }
+
+    setButtonBusy(prefix + '-replace-btn', true, 'Replacing...', 'Replace');
+    statusEl.textContent = 'Processing...';
+    statusEl.className = 'text-sm text-gray-400';
+
+    fetch('/api/library/batch-replace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: type, source: source, destination: destination }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        setButtonBusy(prefix + '-replace-btn', false, 'Replacing...', 'Replace');
+        if (data.error) {
+          statusEl.textContent = 'Error: ' + data.error;
+          statusEl.className = 'text-sm text-red-400';
+        } else {
+          statusEl.textContent = 'Replaced ' + data.replaced + ' videos';
+          statusEl.className = 'text-sm text-green-400';
+        }
+      })
+      .catch(function (err) {
+        setButtonBusy(prefix + '-replace-btn', false, 'Replacing...', 'Replace');
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+      });
+  };
+
   // Toggle switches
   function setupToggle(id) {
     var input = document.getElementById(id);

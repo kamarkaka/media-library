@@ -142,6 +142,53 @@ router.put('/settings/seek-step', async (req, res) => {
   res.json({ success: true, step });
 });
 
+// Batch replace genre or cast across all videos
+router.post('/batch-replace', async (req, res) => {
+  const { type, source, destination } = req.body;
+  if (!type || !source || !destination) {
+    return res.status(400).json({ error: 'type, source, and destination are required' });
+  }
+  if (type !== 'genres' && type !== 'cast') {
+    return res.status(400).json({ error: 'type must be genres or cast' });
+  }
+
+  const cfg = type === 'genres'
+    ? { table: 'genres', joinTable: 'video_genres', fk: 'genre_id' }
+    : { table: 'cast_members', joinTable: 'video_cast', fk: 'cast_id' };
+
+  try {
+    const sourceRow = await db(cfg.table).where('name', source.trim()).first();
+    if (!sourceRow) return res.json({ success: true, replaced: 0 });
+
+    // Ensure destination exists
+    let destRow = await db(cfg.table).where('name', destination.trim()).first();
+    if (!destRow) {
+      const [id] = await db(cfg.table).insert({ name: destination.trim() });
+      destRow = { id };
+    }
+
+    // Find all videos with the source tag
+    const videoIds = await db(cfg.joinTable)
+      .where(cfg.fk, sourceRow.id)
+      .select('video_id');
+
+    let replaced = 0;
+    for (const { video_id } of videoIds) {
+      // Remove source tag
+      await db(cfg.joinTable).where({ video_id, [cfg.fk]: sourceRow.id }).del();
+      // Add destination tag if not already present
+      await db(cfg.joinTable)
+        .insert({ video_id, [cfg.fk]: destRow.id })
+        .onConflict(['video_id', cfg.fk]).ignore();
+      replaced++;
+    }
+
+    res.json({ success: true, replaced });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Coverage test
 router.post('/coverage', async (req, res) => {
   const progress = getCoverageProgress();
