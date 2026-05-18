@@ -118,6 +118,19 @@ export async function initDatabase(): Promise<void> {
     await db.raw('CREATE INDEX idx_validation_scraper_date ON validation_results(scraper_type, created_at DESC)');
   }
 
+  if (!(await db.schema.hasTable('coverage_results'))) {
+    await db.schema.createTable('coverage_results', (t) => {
+      t.increments('id').primary();
+      t.text('run_id').notNullable();
+      t.text('video_id').notNullable();
+      t.text('scraper_type').notNullable();
+      t.integer('success').notNullable();
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.unique(['run_id', 'video_id', 'scraper_type']);
+    });
+    await db.raw('CREATE INDEX idx_coverage_run_scraper ON coverage_results(run_id, scraper_type)');
+  }
+
   // Add columns for existing databases
   const cols = await db.raw("PRAGMA table_info('videos')");
   const colNames = new Set(cols.map((c: any) => c.name));

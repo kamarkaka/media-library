@@ -241,6 +241,58 @@
     if (details) details.classList.toggle('hidden');
   };
 
+  // Coverage test
+  window.startCoverage = function () {
+    var statusEl = document.getElementById('coverage-status');
+    setButtonBusy('coverage-btn', true, 'Running...', 'Run Coverage Test');
+    statusEl.textContent = '';
+
+    if (window.startScanPolling) {
+      window.startScanPolling('coverage');
+    }
+
+    fetch('/api/library/coverage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resume: true }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.success) {
+          statusEl.textContent = data.message || 'Already in progress';
+          statusEl.className = 'text-sm text-yellow-400';
+        }
+      })
+      .catch(function (err) {
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+        setButtonBusy('coverage-btn', false, 'Running...', 'Run Coverage Test');
+      });
+  };
+
+  window.setCoverageButtonBusy = function (busy) {
+    setButtonBusy('coverage-btn', busy, 'Running...', 'Run Coverage Test');
+    if (!busy) {
+      // Reload coverage results
+      fetch('/api/library/coverage/results')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var container = document.getElementById('coverage-results');
+          if (!container || !data.results || data.results.length === 0) return;
+          var html = '<table class="w-full text-sm mt-2">';
+          html += '<thead><tr class="text-gray-500"><th class="text-left py-1">Scraper</th><th class="text-right py-1">Hits</th><th class="text-right py-1">Tested</th><th class="text-right py-1">Coverage</th></tr></thead><tbody>';
+          data.results.forEach(function (r) {
+            var pct = r.tested > 0 ? (r.hits / r.tested * 100).toFixed(1) : '0.0';
+            var color = r.tested > 0 && r.hits / r.tested >= 0.8 ? 'text-green-400' : r.tested > 0 && r.hits / r.tested >= 0.5 ? 'text-yellow-400' : 'text-red-400';
+            html += '<tr class="border-t border-gray-700"><td class="py-1 text-gray-300">' + escapeHtml(r.scraper) + '</td><td class="py-1 text-gray-300 text-right">' + r.hits + '</td><td class="py-1 text-gray-400 text-right">' + r.tested + '</td><td class="py-1 text-right"><span class="' + color + '">' + pct + '%</span></td></tr>';
+          });
+          html += '</tbody></table>';
+          container.innerHTML = html;
+        })
+        .catch(function () {});
+    }
+  };
+
   // Toggle switches
   function setupToggle(id) {
     var input = document.getElementById(id);

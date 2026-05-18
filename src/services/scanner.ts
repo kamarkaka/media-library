@@ -1,5 +1,6 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface ScanProgress {
   status: 'idle' | 'scanning' | 'done' | 'error';
@@ -28,6 +29,7 @@ function createProgress(): ScanProgress {
 
 const scanProgress: ScanProgress = createProgress();
 const scrapeProgress: ScanProgress = createProgress();
+const coverageProgress: ScanProgress = createProgress();
 
 export function getScanProgress(): ScanProgress {
   return { ...scanProgress };
@@ -92,4 +94,25 @@ export function startScrape(fullScrape: boolean, scraperType?: string): void {
   scrapeProgress.status = 'scanning';
   scrapeProgress.step = 'Starting scrape...';
   spawnWorker('scrape-worker', { fullScrape, scraperType }, scrapeProgress);
+}
+
+export function getCoverageProgress(): ScanProgress {
+  return { ...coverageProgress };
+}
+
+export function resetCoverageProgress(): void {
+  Object.assign(coverageProgress, createProgress());
+}
+
+let currentCoverageRunId: string | null = null;
+
+export function startCoverage(resumeRunId?: string): string {
+  if (coverageProgress.status === 'scanning') return currentCoverageRunId!;
+  const runId = resumeRunId || uuidv4();
+  currentCoverageRunId = runId;
+  Object.assign(coverageProgress, createProgress());
+  coverageProgress.status = 'scanning';
+  coverageProgress.step = 'Starting coverage test...';
+  spawnWorker('coverage-worker', { runId }, coverageProgress);
+  return runId;
 }

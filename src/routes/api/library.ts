@@ -3,6 +3,7 @@ import {
   startScan, startScrape,
   getScanProgress, getScrapeProgress,
   resetScanProgress, resetScrapeProgress,
+  startCoverage, getCoverageProgress, resetCoverageProgress,
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
@@ -139,6 +140,60 @@ router.put('/settings/seek-step', async (req, res) => {
   }
   await setSetting('seek_step', String(step));
   res.json({ success: true, step });
+});
+
+// Coverage test
+router.post('/coverage', async (req, res) => {
+  const progress = getCoverageProgress();
+  if (progress.status === 'scanning') {
+    return res.json({ success: false, message: 'Coverage test already in progress' });
+  }
+  // Check for incomplete previous run to resume
+  const lastRunRow = await db('settings').where('key', 'coverage_run_id').first();
+  const resumeId = req.body?.resume && lastRunRow ? lastRunRow.value : undefined;
+  const runId = startCoverage(resumeId);
+  await setSetting('coverage_run_id', runId);
+  res.json({ success: true, runId });
+});
+
+router.get('/coverage/status', (_req, res) => {
+  const progress = getCoverageProgress();
+  res.json(progress);
+  if (progress.status === 'done' || progress.status === 'error') {
+    resetCoverageProgress();
+  }
+});
+
+router.get('/coverage/results', async (_req, res) => {
+  try {
+    // Get the latest run_id
+    const latestRun = await db('coverage_results')
+      .select('run_id')
+      .orderBy('created_at', 'desc')
+      .first();
+    if (!latestRun) return res.json({ results: [] });
+
+    const runId = latestRun.run_id;
+    const totalVideos = (await db('videos').count('* as c').first() as any)?.c || 0;
+    const results = await db('coverage_results')
+      .where('run_id', runId)
+      .select('scraper_type')
+      .sum('success as hits')
+      .count('* as tested')
+      .groupBy('scraper_type');
+
+    res.json({
+      runId,
+      totalVideos,
+      results: results.map((r: any) => ({
+        scraper: r.scraper_type,
+        hits: r.hits,
+        tested: r.tested,
+      })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
