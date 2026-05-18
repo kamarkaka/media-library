@@ -13,40 +13,35 @@
   var hlsInstance = null;
 
   // --- Initialize video source ---
+  var resumed = false;
   function seekToResume() {
-    if (resumePosition > 0 && video.duration && isFinite(video.duration)) {
-      video.currentTime = Math.min(resumePosition, video.duration);
-    }
+    if (resumed || resumePosition <= 0) return;
+    resumed = true;
+    video.currentTime = resumePosition;
   }
 
   if (directPlay) {
     video.src = streamUrl;
-    video.addEventListener('loadedmetadata', seekToResume, { once: true });
   } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
     hlsInstance = new Hls();
     hlsInstance.loadSource(hlsUrl);
     hlsInstance.attachMedia(video);
-    // Wait for HLS manifest + media to be ready before seeking
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
       setupQualitySelector();
     });
-    hlsInstance.on(Hls.Events.LEVEL_LOADED, function () {
-      seekToResume();
+    hlsInstance.on(Hls.Events.LEVEL_LOADED, function (_, data) {
+      if (data.details && data.details.totalduration) {
+        hlsDuration = data.details.totalduration;
+      }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = hlsUrl;
-    video.addEventListener('loadedmetadata', seekToResume, { once: true });
   } else {
     video.src = streamUrl;
-    video.addEventListener('loadedmetadata', seekToResume, { once: true });
   }
 
-  // Duration may arrive late (especially with HLS) — update display when it changes
-  video.addEventListener('durationchange', function () {
-    if (video.duration && isFinite(video.duration)) {
-      timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
-    }
-  });
+  // Wait until the video is actually playable before seeking to resume position
+  video.addEventListener('canplay', seekToResume, { once: true });
 
   // --- Cover image overlay ---
   var coverOverlay = document.getElementById('cover-overlay');
@@ -160,7 +155,12 @@
   video.addEventListener('pause', function () { container.classList.remove('sticky-player'); });
   video.addEventListener('ended', function () { container.classList.remove('sticky-player'); });
 
-  function getDuration() { return (video.duration && isFinite(video.duration)) ? video.duration : 0; }
+  // HLS.js provides duration via level details before the video element does
+  var hlsDuration = 0;
+  function getDuration() {
+    if (video.duration && isFinite(video.duration)) return video.duration;
+    return hlsDuration || 0;
+  }
 
   // Time + progress update
   video.addEventListener('timeupdate', function () {
