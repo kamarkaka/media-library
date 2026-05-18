@@ -725,4 +725,183 @@
         });
     });
   }
+
+  // --- Scrape Comparison ---
+  var scrapeToggle = document.getElementById('scrape-compare-toggle');
+  var scrapeContent = document.getElementById('scrape-compare-content');
+  var scrapeChevron = document.getElementById('scrape-compare-chevron');
+  var scrapeAllBtn = document.getElementById('scrape-all-btn');
+  var scrapeAllStatus = document.getElementById('scrape-all-status');
+  var comparisonTable = document.getElementById('scrape-comparison-table');
+  var applyWrapper = document.getElementById('scrape-apply-wrapper');
+  var applyBtn = document.getElementById('scrape-apply-btn');
+  var applyStatus = document.getElementById('scrape-apply-status');
+  var scrapeResults = null;
+
+  if (scrapeToggle && scrapeContent) {
+    scrapeToggle.addEventListener('click', function () {
+      var isHidden = scrapeContent.style.display === 'none';
+      scrapeContent.style.display = isHidden ? 'block' : 'none';
+      scrapeChevron.classList.toggle('rotate-90', isHidden);
+    });
+  }
+
+  var scrapeFields = [
+    { key: 'code', label: 'Code', putKey: 'code' },
+    { key: 'name', label: 'Name', putKey: 'name' },
+    { key: 'releaseDate', label: 'Release Date', putKey: 'release_date' },
+    { key: 'director', label: 'Director', putKey: 'director' },
+    { key: 'maker', label: 'Maker', putKey: 'maker' },
+    { key: 'label', label: 'Label', putKey: 'label' },
+    { key: 'genres', label: 'Genres', putKey: 'genres' },
+    { key: 'cast', label: 'Cast', putKey: 'cast' },
+    { key: 'coverImage', label: 'Cover Image', putKey: 'cover_image' },
+  ];
+
+  if (scrapeAllBtn) {
+    scrapeAllBtn.addEventListener('click', function () {
+      scrapeAllBtn.disabled = true;
+      scrapeAllBtn.classList.add('opacity-50');
+      scrapeAllStatus.innerHTML = '<span class="inline-block animate-spin mr-1">&#9696;</span> Scraping all sources... this may take a minute';
+      scrapeAllStatus.className = 'text-sm text-yellow-400';
+      comparisonTable.classList.add('hidden');
+      applyWrapper.classList.add('hidden');
+
+      fetch('/api/videos/' + videoId + '/scrape-all', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.error) {
+            scrapeAllStatus.textContent = data.error;
+            scrapeAllStatus.className = 'text-sm text-red-400';
+            return;
+          }
+          scrapeResults = data.results;
+          scrapeAllStatus.textContent = 'Done!';
+          scrapeAllStatus.className = 'text-sm text-green-400';
+          renderComparisonTable(data.results);
+        })
+        .catch(function (err) {
+          scrapeAllStatus.textContent = 'Failed: ' + err.message;
+          scrapeAllStatus.className = 'text-sm text-red-400';
+        })
+        .finally(function () {
+          scrapeAllBtn.disabled = false;
+          scrapeAllBtn.classList.remove('opacity-50');
+        });
+    });
+  }
+
+  function renderComparisonTable(results) {
+    var scraperNames = Object.keys(results);
+    if (scraperNames.length === 0) {
+      comparisonTable.innerHTML = '<p class="text-sm text-gray-500">No scrapers available.</p>';
+      comparisonTable.classList.remove('hidden');
+      return;
+    }
+
+    var html = '<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-600">';
+    html += '<thead><tr class="bg-gray-700">';
+    html += '<th class="px-3 py-2 text-left text-gray-400 font-medium border-b border-gray-600">Field</th>';
+    scraperNames.forEach(function (name) {
+      var hasData = results[name] !== null;
+      html += '<th class="px-3 py-2 text-left font-medium border-b border-gray-600 ' + (hasData ? 'text-gray-400' : 'text-gray-600') + '">' + escapeHtml(name) + (hasData ? '' : ' (failed)') + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    scrapeFields.forEach(function (field) {
+      html += '<tr class="border-b border-gray-700/50">';
+      html += '<td class="px-3 py-2 text-gray-500 font-medium whitespace-nowrap">' + field.label + '</td>';
+
+      var firstWithValue = null;
+      scraperNames.forEach(function (name) {
+        var meta = results[name];
+        var val = meta ? meta[field.key] : null;
+        if (val !== null && val !== undefined && val !== '' && !(Array.isArray(val) && val.length === 0)) {
+          if (!firstWithValue) firstWithValue = name;
+        }
+      });
+
+      scraperNames.forEach(function (name) {
+        var meta = results[name];
+        var val = meta ? meta[field.key] : null;
+        var isEmpty = (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0));
+        var displayVal = '—';
+
+        if (Array.isArray(val) && val.length > 0) {
+          displayVal = val.join(', ');
+        } else if (val && field.key === 'coverImage') {
+          displayVal = val.length > 40 ? val.substring(0, 40) + '...' : val;
+        } else if (val) {
+          displayVal = String(val);
+        }
+
+        var checked = (!isEmpty && name === firstWithValue) ? ' checked' : '';
+        var radioHtml = isEmpty
+          ? '<span class="inline-block w-4"></span>'
+          : '<input type="radio" name="scrape-field-' + field.key + '" value="' + escapeHtml(name) + '"' + checked + ' class="mr-1.5 accent-blue-500">';
+
+        html += '<td class="px-3 py-2 ' + (isEmpty ? 'text-gray-600' : 'text-gray-300') + '">' + radioHtml + '<span class="' + (field.key === 'coverImage' ? 'break-all' : '') + '">' + escapeHtml(displayVal) + '</span></td>';
+      });
+
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    comparisonTable.innerHTML = html;
+    comparisonTable.classList.remove('hidden');
+    applyWrapper.classList.remove('hidden');
+  }
+
+  if (applyBtn) {
+    applyBtn.addEventListener('click', function () {
+      if (!scrapeResults) return;
+
+      var body = {};
+      scrapeFields.forEach(function (field) {
+        var selected = document.querySelector('input[name="scrape-field-' + field.key + '"]:checked');
+        if (selected) {
+          var scraperName = selected.value;
+          var meta = scrapeResults[scraperName];
+          if (meta && meta[field.key] !== undefined && meta[field.key] !== null) {
+            var val = meta[field.key];
+            body[field.putKey] = Array.isArray(val) ? val.join(', ') : val;
+          }
+        }
+      });
+
+      if (Object.keys(body).length === 0) {
+        applyStatus.textContent = 'No fields selected';
+        applyStatus.className = 'text-sm text-yellow-400 ml-2';
+        return;
+      }
+
+      applyBtn.disabled = true;
+      applyStatus.textContent = 'Applying...';
+      applyStatus.className = 'text-sm text-gray-400 ml-2';
+
+      fetch('/api/videos/' + videoId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (result.ok) {
+            applyStatus.textContent = 'Applied! Reloading...';
+            applyStatus.className = 'text-sm text-green-400 ml-2';
+            setTimeout(function () { location.reload(); }, 1000);
+          } else {
+            applyStatus.textContent = result.data.error || 'Failed';
+            applyStatus.className = 'text-sm text-red-400 ml-2';
+          }
+        })
+        .catch(function (err) {
+          applyStatus.textContent = 'Failed: ' + err.message;
+          applyStatus.className = 'text-sm text-red-400 ml-2';
+        })
+        .finally(function () {
+          applyBtn.disabled = false;
+        });
+    });
+  }
 })();

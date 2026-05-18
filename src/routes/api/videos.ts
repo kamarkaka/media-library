@@ -7,6 +7,7 @@ import {
   generateMasterPlaylist, isTranscoded, isTranscoding,
   getPlaylistContent, getSegmentPath, startTranscoding,
 } from '../../services/hls-transcoder';
+import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 
 const router = Router();
 
@@ -216,6 +217,35 @@ router.get('/:id/hls/:quality/:segment', async (req, res) => {
   if (!fs.existsSync(segPath)) return res.status(404).json({ error: 'Segment not found' });
 
   res.type('video/mp2t').sendFile(segPath);
+});
+
+// Scrape a single video across all available scrapers
+router.post('/:id/scrape-all', async (req, res) => {
+  const video: any = await db('videos').where('id', req.params.id).first();
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const scraperNames = listScrapers();
+  const results: Record<string, any> = {};
+
+  for (const name of scraperNames) {
+    const resolver = getResolver(name);
+    const scraper = getScraper(name);
+    try {
+      let sourceUrl: string | null = null;
+      if (resolver) {
+        sourceUrl = await resolver.resolveSourceUrl(video.filename);
+      }
+      results[name] = await scraper.scrape(video.filename, sourceUrl || undefined);
+    } catch (err: any) {
+      console.error(`[scrape-all] ${name} failed:`, err.message);
+      results[name] = null;
+    } finally {
+      if (resolver) await resolver.closeResolver();
+      if (scraper.close) await scraper.close();
+    }
+  }
+
+  res.json({ results });
 });
 
 export default router;
