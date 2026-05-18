@@ -825,11 +825,10 @@
       html += '<div class="mb-3">';
       html += '<div class="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">' + field.label + '</div>';
       options.forEach(function (opt) {
-        html += '<label class="flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-700/50 cursor-pointer">';
-        html += '<input type="radio" name="scrape-field-' + field.key + '" value="' + escapeHtml(opt.name) + '" class="mt-0.5 accent-blue-500 flex-shrink-0">';
-        html += '<span class="text-sm text-gray-300 break-words min-w-0">' + escapeHtml(opt.display) + '</span>';
+        html += '<div class="scrape-option flex items-start gap-2 py-1.5 px-2 rounded cursor-pointer transition-colors text-gray-400 hover:bg-gray-700/50" data-field="' + field.key + '" data-scraper="' + escapeHtml(opt.name) + '">';
+        html += '<span class="text-sm break-words min-w-0">' + escapeHtml(opt.display) + '</span>';
         html += '<span class="text-xs text-gray-600 flex-shrink-0 ml-auto">' + escapeHtml(opt.name) + '</span>';
-        html += '</label>';
+        html += '</div>';
       });
       html += '</div>';
     });
@@ -841,6 +840,26 @@
     comparisonTable.innerHTML = html;
     comparisonTable.classList.remove('hidden');
     applyWrapper.classList.remove('hidden');
+
+    // Toggle selection on click — clicking again deselects
+    comparisonTable.querySelectorAll('.scrape-option').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var field = el.dataset.field;
+        var wasSelected = el.classList.contains('bg-blue-600/20');
+        // Deselect all options for this field
+        comparisonTable.querySelectorAll('.scrape-option[data-field="' + field + '"]').forEach(function (sib) {
+          sib.classList.remove('bg-blue-600/20', 'text-white', 'border', 'border-blue-500/50');
+          sib.classList.add('text-gray-400');
+          delete sib.dataset.selected;
+        });
+        // Select this one (unless it was already selected — toggle off)
+        if (!wasSelected) {
+          el.classList.add('bg-blue-600/20', 'text-white', 'border', 'border-blue-500/50');
+          el.classList.remove('text-gray-400');
+          el.dataset.selected = '1';
+        }
+      });
+    });
   }
 
   if (applyBtn) {
@@ -849,9 +868,9 @@
 
       var body = {};
       scrapeFields.forEach(function (field) {
-        var selected = document.querySelector('input[name="scrape-field-' + field.key + '"]:checked');
+        var selected = comparisonTable.querySelector('.scrape-option[data-field="' + field.key + '"][data-selected="1"]');
         if (selected) {
-          var scraperName = selected.value;
+          var scraperName = selected.dataset.scraper;
           var meta = scrapeResults[scraperName];
           if (meta && meta[field.key] !== undefined && meta[field.key] !== null) {
             var val = meta[field.key];
