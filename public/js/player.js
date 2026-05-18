@@ -799,54 +799,45 @@
       return;
     }
 
-    var html = '<div class="overflow-x-auto"><table class="w-full text-sm border border-gray-600">';
-    html += '<thead><tr class="bg-gray-700">';
-    html += '<th class="px-3 py-2 text-left text-gray-400 font-medium border-b border-gray-600">Field</th>';
-    scraperNames.forEach(function (name) {
-      var hasData = results[name] !== null;
-      html += '<th class="px-3 py-2 text-left font-medium border-b border-gray-600 ' + (hasData ? 'text-gray-400' : 'text-gray-600') + '">' + escapeHtml(name) + (hasData ? '' : ' (failed)') + '</th>';
-    });
-    html += '</tr></thead><tbody>';
+    var html = '';
 
     scrapeFields.forEach(function (field) {
-      html += '<tr class="border-b border-gray-700/50">';
-      html += '<td class="px-3 py-2 text-gray-500 font-medium whitespace-nowrap">' + field.label + '</td>';
-
-      var firstWithValue = null;
+      // Collect scrapers that have a value for this field
+      var options = [];
       scraperNames.forEach(function (name) {
         var meta = results[name];
-        var val = meta ? meta[field.key] : null;
-        if (val !== null && val !== undefined && val !== '' && !(Array.isArray(val) && val.length === 0)) {
-          if (!firstWithValue) firstWithValue = name;
-        }
-      });
-
-      scraperNames.forEach(function (name) {
-        var meta = results[name];
-        var val = meta ? meta[field.key] : null;
-        var isEmpty = (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0));
-        var displayVal = '—';
-
-        if (Array.isArray(val) && val.length > 0) {
+        if (!meta) return;
+        var val = meta[field.key];
+        if (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) return;
+        var displayVal;
+        if (Array.isArray(val)) {
           displayVal = val.join(', ');
-        } else if (val && field.key === 'coverImage') {
-          displayVal = val.length > 40 ? val.substring(0, 40) + '...' : val;
-        } else if (val) {
+        } else if (field.key === 'coverImage' && String(val).length > 60) {
+          displayVal = String(val).substring(0, 60) + '...';
+        } else {
           displayVal = String(val);
         }
-
-        var checked = (!isEmpty && name === firstWithValue) ? ' checked' : '';
-        var radioHtml = isEmpty
-          ? '<span class="inline-block w-4"></span>'
-          : '<input type="radio" name="scrape-field-' + field.key + '" value="' + escapeHtml(name) + '"' + checked + ' class="mr-1.5 accent-blue-500">';
-
-        html += '<td class="px-3 py-2 ' + (isEmpty ? 'text-gray-600' : 'text-gray-300') + '">' + radioHtml + '<span class="' + (field.key === 'coverImage' ? 'break-all' : '') + '">' + escapeHtml(displayVal) + '</span></td>';
+        options.push({ name: name, display: displayVal });
       });
 
-      html += '</tr>';
+      if (options.length === 0) return;
+
+      html += '<div class="mb-3">';
+      html += '<div class="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">' + field.label + '</div>';
+      options.forEach(function (opt) {
+        html += '<label class="flex items-start gap-2 py-1 px-2 rounded hover:bg-gray-700/50 cursor-pointer">';
+        html += '<input type="radio" name="scrape-field-' + field.key + '" value="' + escapeHtml(opt.name) + '" class="mt-0.5 accent-blue-500 flex-shrink-0">';
+        html += '<span class="text-sm text-gray-300 break-words min-w-0">' + escapeHtml(opt.display) + '</span>';
+        html += '<span class="text-xs text-gray-600 flex-shrink-0 ml-auto">' + escapeHtml(opt.name) + '</span>';
+        html += '</label>';
+      });
+      html += '</div>';
     });
 
-    html += '</tbody></table></div>';
+    if (!html) {
+      html = '<p class="text-sm text-gray-500">No results found from any scraper.</p>';
+    }
+
     comparisonTable.innerHTML = html;
     comparisonTable.classList.remove('hidden');
     applyWrapper.classList.remove('hidden');
