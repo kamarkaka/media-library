@@ -49,6 +49,13 @@
   user-select: none;
 }
 
+/* Stick video to top while playing */
+#video-container.sticky-player {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
 /* Show controls on hover or when paused */
 #video-container:hover #player-controls,
 #video-container.paused #player-controls {

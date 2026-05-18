@@ -155,6 +155,11 @@
   video.addEventListener('play', updatePlayIcon);
   video.addEventListener('pause', updatePlayIcon);
 
+  // Stick video to top while playing
+  video.addEventListener('play', function () { container.classList.add('sticky-player'); });
+  video.addEventListener('pause', function () { container.classList.remove('sticky-player'); });
+  video.addEventListener('ended', function () { container.classList.remove('sticky-player'); });
+
   function getDuration() { return (video.duration && isFinite(video.duration)) ? video.duration : 0; }
 
   // Time + progress update
