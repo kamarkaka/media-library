@@ -658,6 +658,20 @@
       .catch(function (err) { alert(err.message); });
   };
 
+  window.clearAllTags = function (type) {
+    var container = document.getElementById(type + '-tags');
+    if (!container) return;
+    var tags = container.querySelectorAll('[data-tag-id]');
+    tags.forEach(function (tag) {
+      var tagId = tag.dataset.tagId;
+      fetch('/api/videos/' + videoId + '/' + type + '/' + tagId, { method: 'DELETE' })
+        .catch(function () {});
+      tag.remove();
+    });
+    delete tagCache[type];
+    syncDetailsView();
+  };
+
   // --- Metadata editing ---
   var metaForm = document.getElementById('video-meta-form');
   var metaStatus = document.getElementById('meta-save-status');
@@ -695,6 +709,7 @@
       var body = {};
       var inputs = metaForm.querySelectorAll('input[name]:not([disabled]), select[name]');
       inputs.forEach(function (input) {
+        input.value = input.value.trim();
         body[input.name] = input.value;
       });
 
@@ -712,6 +727,23 @@
             metaStatus.textContent = 'Saved!';
             metaStatus.className = 'text-sm text-green-400';
             syncDetailsView();
+            // Reload cover image if changed
+            var coverImg = document.querySelector('#video-container img[src*="/cover"]');
+            if (coverImg && body.cover_image) {
+              coverImg.src = '/api/videos/' + videoId + '/cover?' + Date.now();
+            }
+            // Reload genre/cast links in read-only view
+            ['genres', 'cast'].forEach(function (type) {
+              var span = detailsView.querySelector('[data-view="' + type + '"]');
+              if (!span) return;
+              var tags = document.querySelectorAll('#' + type + '-tags [data-tag-id]');
+              var links = [];
+              tags.forEach(function (el) {
+                var name = el.textContent.trim();
+                if (name) links.push('<a href="/?' + type + '=' + encodeURIComponent(name) + '" class="text-blue-400 hover:text-blue-300">' + escapeHtml(name) + '</a>');
+              });
+              span.innerHTML = links.length ? links.join(', ') : '—';
+            });
             showViewMode();
           } else {
             metaStatus.textContent = result.data.error || 'Failed';

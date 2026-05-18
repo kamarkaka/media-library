@@ -1,5 +1,8 @@
 <div class="col-span-full">
-  <label class="block text-gray-500 mb-1"><%= tagLabel %></label>
+  <div class="flex items-center justify-between mb-1">
+    <label class="block text-gray-500"><%= tagLabel %></label>
+    <button type="button" onclick="clearAllTags('<%= tagType %>')" class="text-xs text-red-400 hover:text-red-300 transition-colors">Clear all</button>
+  </div>
   <div id="<%= tagType %>-tags" class="flex flex-wrap gap-1.5 mb-2">
     <% tagItems.forEach(function(item) { %>
     <span class="inline-flex items-center gap-1 bg-gray-700 text-gray-200 px-2 py-1 rounded-full text-xs" data-tag-id="<%= item.id %>">
