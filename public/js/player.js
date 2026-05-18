@@ -210,15 +210,16 @@
     document.addEventListener('touchend', function () { if (seeking) { seeking = false; showControls(); } });
   }
 
-  // Fullscreen — use webkitEnterFullscreen on iOS Safari (no Fullscreen API)
+  // Fullscreen — iOS Safari doesn't support Fullscreen API on containers, only webkitEnterFullscreen on <video>
+  var isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   function enterFullscreen() {
-    if (container.requestFullscreen) {
+    if (isiOS && video.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen();
+    } else if (container.requestFullscreen) {
       container.requestFullscreen();
     } else if (container.webkitRequestFullscreen) {
       container.webkitRequestFullscreen();
-    } else if (video.webkitEnterFullscreen) {
-      // iOS Safari: only the video element can go fullscreen
-      video.webkitEnterFullscreen();
     }
   }
 
@@ -231,7 +232,7 @@
   }
 
   function isFullscreen() {
-    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || video.webkitDisplayingFullscreen);
   }
 
   if (btnFullscreen) {
@@ -246,6 +247,9 @@
     }
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
+    // iOS Safari fires these on the video element
+    video.addEventListener('webkitbeginfullscreen', function () { onFsChange(); });
+    video.addEventListener('webkitendfullscreen', function () { onFsChange(); });
   }
 
   // Keyboard shortcuts
