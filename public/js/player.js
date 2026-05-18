@@ -150,12 +150,7 @@
     }
   }, { passive: true });
 
-  // Prevent zoom on double-tap for all overlay elements
-  container.addEventListener('touchend', function (e) {
-    if (e.target.closest('#player-controls') || e.target.closest('#quality-wrapper')) {
-      e.preventDefault();
-    }
-  });
+  // touch-action: manipulation in CSS already prevents double-tap zoom
 
   video.addEventListener('play', updatePlayIcon);
   video.addEventListener('pause', updatePlayIcon);
@@ -215,17 +210,13 @@
 
   function enterFullscreen() {
     if (isiOS) {
-      if (video.webkitEnterFullscreen) {
-        // iOS requires video to be playing before entering fullscreen
-        if (video.paused) {
-          video.play().then(function () {
-            video.webkitEnterFullscreen();
-          }).catch(function () {
-            video.webkitEnterFullscreen();
-          });
-        } else {
-          video.webkitEnterFullscreen();
-        }
+      // Try standard API on the video element first (iPad Safari supports this)
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      } else if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
       }
       return;
     }
