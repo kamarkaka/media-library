@@ -10,7 +10,7 @@ export function getTestConfig(): ValidatorTestConfig | null {
     expected: {
       code: 'ABF-300',
       name: 'ABF-300 風俗タワー 性感フルコース ACT.47 中森ななみ',
-      releaseDate: '2025-12-17',
+      releaseDate: '2025-12-18',
       maker: 'プレステージ',
       genres: ['単体作品', 'コスプレ'],
     },
