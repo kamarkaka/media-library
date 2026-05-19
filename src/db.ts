@@ -39,6 +39,7 @@ export async function initDatabase(): Promise<void> {
       t.text('maker').nullable();
       t.text('label').nullable();
       t.text('cover_image').nullable();
+      t.text('source_url').nullable();
       t.text('scraper_type').nullable();
       t.integer('width').nullable();
       t.integer('height').nullable();
@@ -147,6 +148,7 @@ export async function initDatabase(): Promise<void> {
     ['framerate', 'REAL'],
     ['file_size', 'INTEGER'],
     ['matched', 'INTEGER DEFAULT 0'],
+    ['source_url', 'TEXT'],
   ];
   for (const [name, type] of newCols) {
     if (!colNames.has(name)) {

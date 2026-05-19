@@ -481,14 +481,16 @@
     if (dateInput && dateSpan) {
       dateSpan.textContent = dateInput.value ? formatLocaleDate(dateInput.value) : '—';
     }
-    // Cover image: show as link or "—"
-    var coverInput = detailsForm.querySelector('[name="cover_image"]');
-    var coverSpan = detailsView.querySelector('[data-view="cover_image"]');
-    if (coverInput && coverSpan) {
-      coverSpan.innerHTML = coverInput.value
-        ? '<a href="' + escapeHtml(coverInput.value) + '" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs">' + escapeHtml(coverInput.value) + '</a>'
-        : '—';
-    }
+    // URL fields: show as link or "—"
+    ['cover_image', 'source_url'].forEach(function (field) {
+      var input = detailsForm.querySelector('[name="' + field + '"]');
+      var span = detailsView.querySelector('[data-view="' + field + '"]');
+      if (input && span) {
+        span.innerHTML = input.value
+          ? '<a href="' + escapeHtml(input.value) + '" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs">' + escapeHtml(input.value) + '</a>'
+          : '—';
+      }
+    });
     // Genres and cast from tag containers
     ['genres', 'cast'].forEach(function (type) {
       var span = detailsView.querySelector('[data-view="' + type + '"]');

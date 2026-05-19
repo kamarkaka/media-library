@@ -92,6 +92,7 @@ async function run(): Promise<void> {
           if (metadata.maker) updates.maker = metadata.maker;
           if (metadata.label) updates.label = metadata.label;
           if (metadata.coverImage) updates.cover_image = metadata.coverImage;
+          if (sourceUrl) updates.source_url = sourceUrl;
           if (metadata.code && metadata.name && metadata.coverImage && metadata.releaseDate) {
             updates.matched = 1;
           }
