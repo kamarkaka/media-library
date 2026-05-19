@@ -117,9 +117,15 @@ router.put('/:id', async (req, res) => {
 
     if ('genres' in req.body) {
       await syncRelation(req.params.id, req.body.genres || '', 'genres', 'video_genres', 'genre_id');
+      await db('genres').whereNotExists(function () {
+        this.select(db.raw(1)).from('video_genres').whereRaw('video_genres.genre_id = genres.id');
+      }).del();
     }
     if ('cast' in req.body) {
       await syncRelation(req.params.id, req.body.cast || '', 'cast_members', 'video_cast', 'cast_id');
+      await db('cast_members').whereNotExists(function () {
+        this.select(db.raw(1)).from('video_cast').whereRaw('video_cast.cast_id = cast_members.id');
+      }).del();
     }
 
     if (Object.keys(updates).length > 0) {
@@ -162,6 +168,10 @@ for (const [route, cfg] of Object.entries(relationTypes)) {
     await db(cfg.joinTable)
       .where({ video_id: req.params.id, [cfg.fk]: req.params.tagId })
       .del();
+    // Remove orphaned tag if no videos reference it
+    await db(cfg.table).where('id', req.params.tagId).whereNotExists(function () {
+      this.select(db.raw(1)).from(cfg.joinTable).whereRaw(`${cfg.joinTable}.${cfg.fk} = ${cfg.table}.id`);
+    }).del();
     res.json({ success: true });
   });
 }
