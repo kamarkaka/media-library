@@ -105,10 +105,10 @@ async function run(): Promise<void> {
             await db('videos').where('id', video.id).update({ id: metadata.id });
           }
 
-          if (metadata.genres) {
+          if (metadata.genres && metadata.genres.length > 0) {
             await syncRelation(video.id, metadata.genres, 'genres', 'video_genres', 'genre_id');
           }
-          if (metadata.cast) {
+          if (metadata.cast && metadata.cast.length > 0) {
             await syncRelation(video.id, metadata.cast, 'cast_members', 'video_cast', 'cast_id');
           }
 
