@@ -27,6 +27,17 @@ for (const [route, cfg] of Object.entries(tagTypes)) {
     res.json({ id, name: name.trim() });
   });
 
+  router.put(`/${route}/:id`, async (req, res) => {
+    const row = await db(cfg.table).where('id', req.params.id).first();
+    if (!row) return res.status(404).json({ error: `${cfg.label} not found` });
+    const updates: Record<string, any> = {};
+    if ('alias' in req.body) updates.alias = req.body.alias?.trim() || null;
+    if (Object.keys(updates).length > 0) {
+      await db(cfg.table).where('id', req.params.id).update(updates);
+    }
+    res.json({ ...row, ...updates });
+  });
+
   router.delete(`/${route}/:id`, async (req, res) => {
     await db(cfg.joinTable).where(cfg.fk, req.params.id).del();
     await db(cfg.table).where('id', req.params.id).del();

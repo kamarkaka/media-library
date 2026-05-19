@@ -6,7 +6,7 @@ const router = Router();
 router.get('/genres', async (_req, res) => {
   const genres = await db('genres')
     .leftJoin('video_genres', 'genres.id', 'video_genres.genre_id')
-    .select('genres.id', 'genres.name')
+    .select('genres.id', 'genres.name', 'genres.alias')
     .count('video_genres.video_id as count')
     .groupBy('genres.id')
     .orderBy('genres.name');

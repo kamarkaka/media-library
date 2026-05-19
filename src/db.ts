@@ -57,6 +57,7 @@ export async function initDatabase(): Promise<void> {
     await db.schema.createTable('genres', (t) => {
       t.increments('id').primary();
       t.text('name').notNullable().unique();
+      t.text('alias').nullable();
     });
   }
 
@@ -151,6 +152,12 @@ export async function initDatabase(): Promise<void> {
     if (!colNames.has(name)) {
       await db.raw(`ALTER TABLE videos ADD COLUMN ${name} ${type}`);
     }
+  }
+
+  // Add alias column to genres for existing databases
+  const genreCols = await db.raw("PRAGMA table_info('genres')");
+  if (!genreCols.some((c: any) => c.name === 'alias')) {
+    await db.raw('ALTER TABLE genres ADD COLUMN alias TEXT');
   }
 
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_release_date ON videos(release_date)');

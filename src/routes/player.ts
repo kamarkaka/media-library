@@ -16,7 +16,7 @@ router.get('/:id', async (req, res) => {
   const genres = await db('genres')
     .join('video_genres', 'genres.id', 'video_genres.genre_id')
     .where('video_genres.video_id', video.id)
-    .select('genres.id', 'genres.name')
+    .select('genres.id', 'genres.name', 'genres.alias')
     .orderBy('genres.name');
 
   const cast = await db('cast_members')
