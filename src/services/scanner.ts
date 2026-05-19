@@ -30,6 +30,7 @@ function createProgress(): ScanProgress {
 const scanProgress: ScanProgress = createProgress();
 const scrapeProgress: ScanProgress = createProgress();
 const coverageProgress: ScanProgress = createProgress();
+const coverDownloadProgress: ScanProgress = createProgress();
 
 export function getScanProgress(): ScanProgress {
   return { ...scanProgress };
@@ -115,4 +116,20 @@ export function startCoverage(resumeRunId?: string): string {
   coverageProgress.step = 'Starting coverage test...';
   spawnWorker('coverage-worker', { runId }, coverageProgress);
   return runId;
+}
+
+export function getCoverDownloadProgress(): ScanProgress {
+  return { ...coverDownloadProgress };
+}
+
+export function resetCoverDownloadProgress(): void {
+  Object.assign(coverDownloadProgress, createProgress());
+}
+
+export function startCoverDownload(): void {
+  if (coverDownloadProgress.status === 'scanning') return;
+  Object.assign(coverDownloadProgress, createProgress());
+  coverDownloadProgress.status = 'scanning';
+  coverDownloadProgress.step = 'Starting cover download...';
+  spawnWorker('cover-download-worker', {}, coverDownloadProgress);
 }

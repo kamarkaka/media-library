@@ -83,8 +83,10 @@
       if (scraperSelect) body.scraperType = scraperSelect.value;
     }
 
-    var busyText = type === 'scan' ? 'Scanning...' : 'Scraping...';
-    var defaultText = type === 'scan' ? 'Scan Library' : 'Scrape Metadata';
+    var busyTexts = { scan: 'Scanning...', scrape: 'Scraping...', 'cover-download': 'Downloading...' };
+    var defaultTexts = { scan: 'Scan Library', scrape: 'Scrape Metadata', 'cover-download': 'Download Cover Images' };
+    var busyText = busyTexts[type] || 'Processing...';
+    var defaultText = defaultTexts[type] || type;
 
     setButtonBusy(btnId, true, busyText, defaultText);
     statusEl.textContent = '';
@@ -118,6 +120,9 @@
   };
   window.setScrapeButtonBusy = function (busy) {
     setButtonBusy('scrape-btn', busy, 'Scraping...', 'Scrape Metadata');
+  };
+  window.setCoverDownloadButtonBusy = function (busy) {
+    setButtonBusy('cover-download-btn', busy, 'Downloading...', 'Download Cover Images');
   };
 
   // --- Validate scraper ---

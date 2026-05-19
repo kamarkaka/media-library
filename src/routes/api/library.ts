@@ -4,6 +4,7 @@ import {
   getScanProgress, getScrapeProgress,
   resetScanProgress, resetScrapeProgress,
   startCoverage, getCoverageProgress, resetCoverageProgress,
+  startCoverDownload, getCoverDownloadProgress, resetCoverDownloadProgress,
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig, listScrapers } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
@@ -270,6 +271,23 @@ router.get('/coverage/results', async (_req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/cover-download', (_req, res) => {
+  const progress = getCoverDownloadProgress();
+  if (progress.status === 'scanning') {
+    return res.json({ success: false, message: 'Cover download already in progress' });
+  }
+  startCoverDownload();
+  res.json({ success: true });
+});
+
+router.get('/cover-download/status', (_req, res) => {
+  const progress = getCoverDownloadProgress();
+  res.json(progress);
+  if (progress.status === 'done' || progress.status === 'error') {
+    resetCoverDownloadProgress();
   }
 });
 

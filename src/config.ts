@@ -13,6 +13,7 @@ export interface AppConfig {
   validatorCron: string;
   hlsCacheDir: string;
   ffmpegPath: string;
+  coverCacheDir: string;
 }
 
 export const config: AppConfig = {
@@ -25,4 +26,5 @@ export const config: AppConfig = {
   validatorCron: process.env.VALIDATOR_CRON || '0 8 * * *',
   hlsCacheDir: process.env.HLS_CACHE_DIR || path.join(__dirname, '../data/hls-cache'),
   ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
+  coverCacheDir: process.env.COVER_CACHE_DIR || path.join(__dirname, '../data/covers'),
 };

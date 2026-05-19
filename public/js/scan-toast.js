@@ -35,7 +35,7 @@
 
   function stopPolling() {
     polling = false;
-    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy };
+    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy, 'cover-download': window.setCoverDownloadButtonBusy };
     var setBusy = busyFns[activeJobType];
     if (setBusy) setBusy(false);
     activeJobType = null;
@@ -63,7 +63,7 @@
     if (!polling) return;
 
     var statusUrl = '/api/library/' + activeJobType + '/status';
-    var labels = { scan: 'Scan', scrape: 'Scrape', coverage: 'Coverage' };
+    var labels = { scan: 'Scan', scrape: 'Scrape', coverage: 'Coverage', 'cover-download': 'Cover Download' };
     var label = labels[activeJobType] || 'Job';
 
     fetch(statusUrl)
@@ -132,11 +132,11 @@
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     activeJobType = type || 'scan';
     idleRetries = 0;
-    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy };
+    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy, 'cover-download': window.setCoverDownloadButtonBusy };
     var setBusy = busyFns[activeJobType];
     if (setBusy) setBusy(true);
     setSpinnerActive();
-    var labels = { scan: 'scan', scrape: 'scrape', coverage: 'coverage test' };
+    var labels = { scan: 'scan', scrape: 'scrape', coverage: 'coverage test', 'cover-download': 'cover download' };
     toastCount.textContent = 'Starting ' + (labels[activeJobType] || 'job') + '...';
     toastFile.textContent = '';
     toastStep.textContent = '';
@@ -162,4 +162,5 @@
   checkActiveJob('scan');
   checkActiveJob('scrape');
   checkActiveJob('coverage');
+  checkActiveJob('cover-download');
 })();

@@ -194,6 +194,16 @@
       </div>
     </div>
 
+    <!-- Download cover images -->
+    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+      <button id="cover-download-btn" onclick="startJob('cover-download')"
+        class="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded text-sm transition-colors">
+        Download Cover Images
+      </button>
+      <span id="cover-download-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mt-1">Downloads all remote cover images to local storage for faster loading.</p>
+
     <!-- Fix date formats -->
     <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
       <button id="fix-dates-btn" onclick="fixDateFormats()"

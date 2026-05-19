@@ -2,6 +2,7 @@ import { parentPort, workerData } from 'worker_threads';
 import knexInit from 'knex';
 import { config } from '../config';
 import { getScraper, getResolver } from '../scrapers/base';
+import { downloadCover } from './cover-downloader';
 import type { ScanProgress } from './scanner';
 
 const { fullScrape, scraperType } = workerData as { fullScrape: boolean; scraperType?: string };
@@ -91,7 +92,14 @@ async function run(): Promise<void> {
           if (metadata.director) updates.director = metadata.director;
           if (metadata.maker) updates.maker = metadata.maker;
           if (metadata.label) updates.label = metadata.label;
-          if (metadata.coverImage) updates.cover_image = metadata.coverImage;
+          if (metadata.coverImage) {
+            if (metadata.code) {
+              const localPath = await downloadCover(metadata.coverImage, metadata.code, config.coverCacheDir);
+              updates.cover_image = localPath || metadata.coverImage;
+            } else {
+              updates.cover_image = metadata.coverImage;
+            }
+          }
           if (sourceUrl) updates.source_url = sourceUrl;
           if (metadata.code && metadata.name && metadata.coverImage && metadata.releaseDate) {
             updates.matched = 1;
