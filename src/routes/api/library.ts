@@ -183,6 +183,13 @@ router.post('/batch-replace', async (req, res) => {
       replaced++;
     }
 
+    // Remove orphaned tags with no videos linked
+    await db(cfg.table)
+      .whereNotExists(function () {
+        this.select(db.raw(1)).from(cfg.joinTable).whereRaw(`${cfg.joinTable}.${cfg.fk} = ${cfg.table}.id`);
+      })
+      .del();
+
     res.json({ success: true, replaced });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

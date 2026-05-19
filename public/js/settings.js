@@ -293,31 +293,26 @@
     }
   };
 
-  // Batch replace
-  function populateDropdowns(type) {
+  // Batch replace — populate source dropdowns only
+  function populateSourceDropdown(type) {
     var endpoint = type === 'genres' ? '/api/genres' : '/api/cast';
+    var sourceEl = document.getElementById(type === 'genres' ? 'genre-source' : 'cast-source');
+    if (!sourceEl) return;
     fetch(endpoint)
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var items = data.map(function (item) { return typeof item === 'string' ? item : item.name; });
-        var sourceEl = document.getElementById(type === 'genres' ? 'genre-source' : 'cast-source');
-        var destEl = document.getElementById(type === 'genres' ? 'genre-dest' : 'cast-dest');
-        if (!sourceEl || !destEl) return;
         items.forEach(function (name) {
-          var opt1 = document.createElement('option');
-          opt1.value = name;
-          opt1.textContent = name;
-          sourceEl.appendChild(opt1);
-          var opt2 = document.createElement('option');
-          opt2.value = name;
-          opt2.textContent = name;
-          destEl.appendChild(opt2);
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          sourceEl.appendChild(opt);
         });
       })
       .catch(function () {});
   }
-  populateDropdowns('genres');
-  populateDropdowns('cast');
+  populateSourceDropdown('genres');
+  populateSourceDropdown('cast');
 
   window.batchReplace = function (type) {
     var prefix = type === 'genres' ? 'genre' : 'cast';
@@ -325,10 +320,10 @@
     var destEl = document.getElementById(prefix + '-dest');
     var statusEl = document.getElementById(prefix + '-replace-status');
     var source = sourceEl.value;
-    var destination = destEl.value;
+    var destination = destEl.value.trim();
 
     if (!source || !destination) {
-      statusEl.textContent = 'Select both source and destination';
+      statusEl.textContent = 'Enter both source and destination';
       statusEl.className = 'text-sm text-yellow-400';
       return;
     }
