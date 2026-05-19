@@ -12,6 +12,8 @@ router.get('/', async (req, res) => {
   const validationResults = await getLatestValidationResults();
   const seekStepRow = await db('settings').where('key', 'seek_step').first();
   const seekStep = seekStepRow ? parseInt(seekStepRow.value, 10) || 10 : 10;
+  const defaultScraperRow = await db('settings').where('key', 'default_scraper').first();
+  const defaultScraper = defaultScraperRow ? defaultScraperRow.value : listScrapers()[0] || '';
 
   // Coverage results
   let coverageResults: any[] = [];
@@ -34,6 +36,7 @@ router.get('/', async (req, res) => {
     scrapers: listScrapers(),
     validationResults,
     seekStep,
+    defaultScraper,
     coverageResults,
     coverageTotalVideos,
   });

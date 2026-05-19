@@ -5,7 +5,7 @@ import {
   resetScanProgress, resetScrapeProgress,
   startCoverage, getCoverageProgress, resetCoverageProgress,
 } from '../../services/scanner';
-import { runValidation, getValidatorConfig } from '../../scrapers/base';
+import { runValidation, getValidatorConfig, listScrapers } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
 import db, { setSetting } from '../../db';
 
@@ -67,6 +67,22 @@ router.post('/validate', async (req, res) => {
     console.error(`[validator] Error running validation for "${scraperType}":`, err);
     res.status(500).json({ error: err.message || 'Validation failed' });
   }
+});
+
+router.post('/validate-all', async (_req, res) => {
+  const scraperNames = listScrapers();
+  const results: Record<string, any> = {};
+
+  for (const name of scraperNames) {
+    try {
+      const result = await runValidation(name);
+      results[name] = result || { success: false, error: 'No test config' };
+    } catch (err: any) {
+      results[name] = { success: false, error: err.message };
+    }
+  }
+
+  res.json({ results });
 });
 
 // Get latest validation results per scraper
@@ -140,6 +156,13 @@ router.put('/settings/seek-step', async (req, res) => {
   }
   await setSetting('seek_step', String(step));
   res.json({ success: true, step });
+});
+
+router.put('/settings/default-scraper', async (req, res) => {
+  const scraper = req.body.scraper;
+  if (!scraper) return res.status(400).json({ error: 'scraper is required' });
+  await setSetting('default_scraper', scraper);
+  res.json({ success: true, scraper });
 });
 
 // Batch replace genre or cast across all videos

@@ -2,11 +2,11 @@
 <div class="max-w-3xl mx-auto p-4 sm:p-6 overflow-hidden">
   <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
-  <!-- Library Paths -->
+  <!-- 1. Library -->
   <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold">Library Paths</h2>
-      <span class="text-sm text-gray-500"><%= videoCount %> videos in library</span>
+      <h2 class="text-lg font-semibold">Library</h2>
+      <span class="text-sm text-gray-500"><%= videoCount %> videos</span>
     </div>
 
     <form id="add-path-form" class="flex gap-2 mb-4">
@@ -44,172 +44,178 @@
         </label>
         <span id="scan-status" class="text-sm text-gray-400"></span>
       </div>
-      <p class="text-xs text-gray-600 mb-4">Scan walks library paths, adds new video files, and extracts technical metadata via ffprobe. Full scan re-probes all files.</p>
+      <p class="text-xs text-gray-600">Scan walks library paths, adds new video files, and extracts technical metadata via ffprobe. Full scan re-probes all files.</p>
+    </div>
+  </section>
 
-      <div class="flex items-center gap-4 mb-3">
-        <button id="scrape-btn" onclick="startJob('scrape')"
-          class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm transition-colors">
-          Scrape Metadata
-        </button>
-        <select id="scraper-type" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
-          <% scrapers.forEach(function(s) { %>
-          <option value="<%= s %>"><%= s %></option>
-          <% }) %>
-          <option value="noop">None</option>
-        </select>
-        <label for="full-scrape" class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" id="full-scrape" class="hidden">
-          <div class="relative w-9 h-5">
-            <div class="w-9 h-5 bg-gray-600 rounded-full transition-colors" id="full-scrape-track"></div>
-            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform" id="full-scrape-knob"></div>
+  <!-- 2. Metadata -->
+  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Metadata</h2>
+
+    <!-- Default scraper -->
+    <div class="flex items-center gap-4 mb-4">
+      <label class="text-sm text-gray-400">Default scraper</label>
+      <select id="default-scraper" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
+        <% scrapers.forEach(function(s) { %>
+        <option value="<%= s %>" <%= s === defaultScraper ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+      <span id="default-scraper-status" class="text-sm text-gray-400"></span>
+    </div>
+
+    <!-- Scrape metadata -->
+    <div class="flex items-center gap-4 mb-3">
+      <button id="scrape-btn" onclick="startJob('scrape')"
+        class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm transition-colors">
+        Scrape Metadata
+      </button>
+      <label for="full-scrape" class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" id="full-scrape" class="hidden">
+        <div class="relative w-9 h-5">
+          <div class="w-9 h-5 bg-gray-600 rounded-full transition-colors" id="full-scrape-track"></div>
+          <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform" id="full-scrape-knob"></div>
+        </div>
+        <span class="text-sm text-gray-400">Full scrape</span>
+      </label>
+      <span id="scrape-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mb-4">Scrape resolves source URLs and fetches metadata using the selected default scraper. Full scrape re-fetches all videos.</p>
+
+    <!-- Validate scrapers -->
+    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+      <button id="validate-btn" onclick="validateAllScrapers()"
+        class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded text-sm transition-colors">
+        Validate All Scrapers
+      </button>
+      <span id="validate-status" class="text-sm text-gray-400"></span>
+    </div>
+    <div id="validate-results" class="hidden mt-3 text-sm"></div>
+
+    <% if (validationResults && validationResults.length > 0) { %>
+    <div class="mt-3">
+      <% validationResults.forEach(function(r) { %>
+      <div class="border-b border-gray-700 last:border-0 py-3">
+        <div class="flex items-center justify-between cursor-pointer" onclick="toggleValidationDetails(this)">
+          <div class="flex items-center gap-3">
+            <% if (r.error) { %>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">ERROR</span>
+            <% } else if (r.success) { %>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-900 text-green-300">PASS</span>
+            <% } else { %>
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">FAIL</span>
+            <% } %>
+            <span class="text-sm text-gray-300"><%= r.scraper_type %></span>
           </div>
-          <span class="text-sm text-gray-400">Full scrape</span>
-        </label>
-        <span id="scrape-status" class="text-sm text-gray-400"></span>
-      </div>
-      <p class="text-xs text-gray-600">Scrape resolves source URLs and fetches metadata (name, code, cast, etc.) from the web. Full scrape re-fetches all videos.</p>
-
-      <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
-        <button id="validate-btn" onclick="validateScraper()"
-          class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded text-sm transition-colors">
-          Validate Scraper
-        </button>
-        <select id="validate-scraper-type" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
-          <% scrapers.forEach(function(s) { %>
-          <option value="<%= s %>"><%= s %></option>
-          <% }) %>
-        </select>
-        <span id="validate-status" class="text-sm text-gray-400"></span>
-      </div>
-      <div id="validate-results" class="hidden mt-3 text-sm"></div>
-
-      <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
-        <button id="fix-dates-btn" onclick="fixDateFormats()"
-          class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded text-sm transition-colors">
-          Fix Date Formats
-        </button>
-        <span id="fix-dates-status" class="text-sm text-gray-400"></span>
-      </div>
-      <p class="text-xs text-gray-600 mt-1">Converts release dates from "DD Mon YYYY" to "YYYY-MM-DD" format.</p>
-
-      <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
-        <button id="auto-match-btn" onclick="autoMatchVideos()"
-          class="bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded text-sm transition-colors">
-          Auto-Match Videos
-        </button>
-        <span id="auto-match-status" class="text-sm text-gray-400"></span>
-      </div>
-      <p class="text-xs text-gray-600 mt-1">Marks videos as matched if they have code, name, cover image, and release date. Unmatched videos will be picked up by quick scrape.</p>
-
-      <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
-        <button id="coverage-btn" onclick="startCoverage()"
-          class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm transition-colors">
-          Run Coverage Test
-        </button>
-        <span id="coverage-status" class="text-sm text-gray-400"></span>
-      </div>
-      <p class="text-xs text-gray-600 mt-1">Tests all scrapers against every video in the library. Resumable — can be stopped and continued later.</p>
-
-      <div id="coverage-results" class="mt-3">
-        <% if (coverageResults && coverageResults.length > 0) { %>
-        <table class="w-full text-sm mt-2">
-          <thead><tr class="text-gray-500"><th class="text-left py-1">Scraper</th><th class="text-right py-1">Hits</th><th class="text-right py-1">Tested</th><th class="text-right py-1">Coverage</th></tr></thead>
-          <tbody>
-            <% coverageResults.forEach(function(r) { %>
-            <tr class="border-t border-gray-700">
-              <td class="py-1 text-gray-300"><%= r.scraper_type %></td>
-              <td class="py-1 text-gray-300 text-right"><%= r.hits %></td>
-              <td class="py-1 text-gray-400 text-right"><%= r.tested %></td>
-              <td class="py-1 text-right"><span class="<%= r.tested > 0 && r.hits / r.tested >= 0.8 ? 'text-green-400' : r.tested > 0 && r.hits / r.tested >= 0.5 ? 'text-yellow-400' : 'text-red-400' %>"><%= r.tested > 0 ? (r.hits / r.tested * 100).toFixed(1) : '0.0' %>%</span></td>
-            </tr>
-            <% }) %>
-          </tbody>
-        </table>
-        <% } %>
-      </div>
-    </div>
-  </section>
-
-  <!-- Batch Replace -->
-  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
-    <h2 class="text-lg font-semibold mb-4">Batch Replace</h2>
-
-    <div class="mb-4">
-      <h3 class="text-sm font-medium text-gray-400 mb-2">Genres</h3>
-      <div class="flex flex-wrap items-center gap-2">
-        <select id="genre-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
-          <option value="">Source genre...</option>
-        </select>
-        <span class="text-gray-500 text-sm">&rarr;</span>
-        <input type="text" id="genre-dest" placeholder="Destination genre..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
-        <button id="genre-replace-btn" onclick="batchReplace('genres')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
-        <span id="genre-replace-status" class="text-sm text-gray-400"></span>
-      </div>
-      <p class="text-xs text-gray-600 mt-1">Replaces source genre with destination on all videos. Videos with both already will just have the source removed.</p>
-    </div>
-
-    <div>
-      <h3 class="text-sm font-medium text-gray-400 mb-2">Cast</h3>
-      <div class="flex flex-wrap items-center gap-2">
-        <select id="cast-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
-          <option value="">Source cast...</option>
-        </select>
-        <span class="text-gray-500 text-sm">&rarr;</span>
-        <input type="text" id="cast-dest" placeholder="Destination cast..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
-        <button id="cast-replace-btn" onclick="batchReplace('cast')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
-        <span id="cast-replace-status" class="text-sm text-gray-400"></span>
-      </div>
-      <p class="text-xs text-gray-600 mt-1">Replaces source cast member with destination on all videos. Videos with both already will just have the source removed.</p>
-    </div>
-  </section>
-
-  <!-- Validation Results -->
-  <% if (validationResults && validationResults.length > 0) { %>
-  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
-    <h2 class="text-lg font-semibold mb-4">Validation Results</h2>
-    <% validationResults.forEach(function(r) { %>
-    <div class="border-b border-gray-700 last:border-0 py-3">
-      <div class="flex items-center justify-between cursor-pointer" onclick="toggleValidationDetails(this)">
-        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500"><%= new Date(r.created_at).toLocaleString() %></span>
+            <span class="text-gray-500 text-xs">&#9660;</span>
+          </div>
+        </div>
+        <div class="validation-details hidden mt-2">
           <% if (r.error) { %>
-            <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">ERROR</span>
-          <% } else if (r.success) { %>
-            <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-900 text-green-300">PASS</span>
-          <% } else { %>
-            <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">FAIL</span>
+            <p class="text-xs text-red-400"><%= r.error %></p>
+          <% } else if (r.fields && r.fields.length > 0) { %>
+            <table class="w-full text-xs mt-1">
+              <thead><tr class="text-gray-500"><th class="text-left py-1">Field</th><th class="text-left py-1">Expected</th><th class="text-left py-1">Actual</th><th class="text-left py-1">Result</th></tr></thead>
+              <tbody>
+                <% r.fields.forEach(function(f) { %>
+                <tr class="border-t border-gray-700">
+                  <td class="py-1 text-gray-300"><%= f.field %></td>
+                  <td class="py-1 text-gray-400 truncate max-w-[200px]"><%= Array.isArray(f.expected) ? f.expected.join(', ') : (f.expected || '—') %></td>
+                  <td class="py-1 text-gray-400 truncate max-w-[200px]"><%= Array.isArray(f.actual) ? f.actual.join(', ') : (f.actual || '—') %></td>
+                  <td class="py-1"><%= f.match ? '✓' : '✗' %></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
           <% } %>
-          <span class="text-sm text-gray-300"><%= r.scraper_type %></span>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-gray-500"><%= new Date(r.created_at).toLocaleString() %></span>
-          <span class="text-gray-500 text-xs">&#9660;</span>
         </div>
       </div>
-      <div class="validation-details hidden mt-2">
-        <% if (r.error) { %>
-          <p class="text-xs text-red-400"><%= r.error %></p>
-        <% } else if (r.fields && r.fields.length > 0) { %>
-          <table class="w-full text-xs mt-1">
-            <thead><tr class="text-gray-500"><th class="text-left py-1">Field</th><th class="text-left py-1">Expected</th><th class="text-left py-1">Actual</th><th class="text-left py-1">Result</th></tr></thead>
-            <tbody>
-              <% r.fields.forEach(function(f) { %>
-              <tr class="border-t border-gray-700">
-                <td class="py-1 text-gray-300"><%= f.field %></td>
-                <td class="py-1 text-gray-400 truncate max-w-[200px]"><%= Array.isArray(f.expected) ? f.expected.join(', ') : (f.expected || '\u2014') %></td>
-                <td class="py-1 text-gray-400 truncate max-w-[200px]"><%= Array.isArray(f.actual) ? f.actual.join(', ') : (f.actual || '\u2014') %></td>
-                <td class="py-1"><%= f.match ? '\u2713' : '\u2717' %></td>
-              </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        <% } %>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <!-- Coverage test -->
+    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+      <button id="coverage-btn" onclick="startCoverage()"
+        class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm transition-colors">
+        Run Coverage Test
+      </button>
+      <span id="coverage-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mt-1">Tests all scrapers against every video in the library. Resumable.</p>
+
+    <div id="coverage-results" class="mt-3">
+      <% if (coverageResults && coverageResults.length > 0) { %>
+      <table class="w-full text-sm mt-2">
+        <thead><tr class="text-gray-500"><th class="text-left py-1">Scraper</th><th class="text-right py-1">Hits</th><th class="text-right py-1">Tested</th><th class="text-right py-1">Coverage</th></tr></thead>
+        <tbody>
+          <% coverageResults.forEach(function(r) { %>
+          <tr class="border-t border-gray-700">
+            <td class="py-1 text-gray-300"><%= r.scraper_type %></td>
+            <td class="py-1 text-gray-300 text-right"><%= r.hits %></td>
+            <td class="py-1 text-gray-400 text-right"><%= r.tested %></td>
+            <td class="py-1 text-right"><span class="<%= r.tested > 0 && r.hits / r.tested >= 0.8 ? 'text-green-400' : r.tested > 0 && r.hits / r.tested >= 0.5 ? 'text-yellow-400' : 'text-red-400' %>"><%= r.tested > 0 ? (r.hits / r.tested * 100).toFixed(1) : '0.0' %>%</span></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+
+    <!-- Batch replace -->
+    <div class="mt-4 pt-4 border-t border-gray-700">
+      <h3 class="text-sm font-medium text-gray-400 mb-3">Batch Replace</h3>
+
+      <div class="mb-4">
+        <label class="text-xs text-gray-500 mb-1 block">Genres</label>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="genre-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
+            <option value="">Source...</option>
+          </select>
+          <span class="text-gray-500 text-sm">&rarr;</span>
+          <input type="text" id="genre-dest" placeholder="Destination..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
+          <button id="genre-replace-btn" onclick="batchReplace('genres')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
+          <span id="genre-replace-status" class="text-sm text-gray-400"></span>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs text-gray-500 mb-1 block">Cast</label>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="cast-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
+            <option value="">Source...</option>
+          </select>
+          <span class="text-gray-500 text-sm">&rarr;</span>
+          <input type="text" id="cast-dest" placeholder="Destination..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
+          <button id="cast-replace-btn" onclick="batchReplace('cast')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
+          <span id="cast-replace-status" class="text-sm text-gray-400"></span>
+        </div>
       </div>
     </div>
-    <% }) %>
-  </section>
-  <% } %>
 
-  <!-- Player Settings -->
+    <!-- Fix date formats -->
+    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+      <button id="fix-dates-btn" onclick="fixDateFormats()"
+        class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded text-sm transition-colors">
+        Fix Date Formats
+      </button>
+      <span id="fix-dates-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mt-1">Converts release dates from "DD Mon YYYY" to "YYYY-MM-DD" format.</p>
+
+    <!-- Auto-match -->
+    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+      <button id="auto-match-btn" onclick="autoMatchVideos()"
+        class="bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded text-sm transition-colors">
+        Auto-Match Videos
+      </button>
+      <span id="auto-match-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mt-1">Marks videos as matched if they have code, name, cover image, and release date.</p>
+  </section>
+
+  <!-- 3. Player Settings -->
   <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
     <h2 class="text-lg font-semibold mb-4">Player Settings</h2>
     <div class="flex items-center gap-4">
@@ -222,10 +228,10 @@
       </select>
       <span id="seek-step-status" class="text-sm text-gray-400"></span>
     </div>
-    <p class="text-xs text-gray-600 mt-2">Controls how many seconds the rewind/fast-forward buttons and arrow keys skip.</p>
+    <p class="text-xs text-gray-600 mt-2">Controls how many seconds swipe gestures and arrow keys skip.</p>
   </section>
 
-  <!-- Change Password -->
+  <!-- 4. Change Password -->
   <section class="bg-gray-800 rounded-lg p-4 sm:p-6">
     <h2 class="text-lg font-semibold mb-4">Change Password</h2>
     <form id="password-form" class="max-w-sm">
@@ -234,9 +240,14 @@
         <input type="password" id="current-password" required
           class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
       </div>
-      <div class="mb-4">
+      <div class="mb-3">
         <label class="block text-gray-400 mb-1 text-sm" for="new-password">New Password</label>
         <input type="password" id="new-password" required
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-400 mb-1 text-sm" for="confirm-password">Confirm New Password</label>
+        <input type="password" id="confirm-password" required
           class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
       </div>
       <div class="flex items-center gap-3">

@@ -14,8 +14,10 @@
 }
 
 /* Normalize form field dimensions */
-#video-meta-form input,
-#video-meta-form select {
+input[type="text"],
+input[type="password"],
+input[type="date"],
+select {
   height: 34px;
   box-sizing: border-box;
 }
@@ -24,7 +26,7 @@
   -moz-appearance: none;
   appearance: none;
 }
-#video-meta-form select {
+select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;

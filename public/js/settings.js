@@ -79,7 +79,7 @@
     var body = {};
     body[bodyKey] = isFull;
     if (type === 'scrape') {
-      var scraperSelect = document.getElementById('scraper-type');
+      var scraperSelect = document.getElementById('default-scraper');
       if (scraperSelect) body.scraperType = scraperSelect.value;
     }
 
@@ -121,30 +121,20 @@
   };
 
   // --- Validate scraper ---
-  window.validateScraper = function () {
+  window.validateAllScrapers = function () {
     var btn = document.getElementById('validate-btn');
     var statusEl = document.getElementById('validate-status');
     var resultsEl = document.getElementById('validate-results');
-    var scraperSelect = document.getElementById('validate-scraper-type');
-    var scraperType = scraperSelect ? scraperSelect.value : '';
 
-    btn.disabled = true;
-    btn.textContent = 'Validating...';
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-    statusEl.textContent = 'Running validation...';
+    setButtonBusy('validate-btn', true, 'Validating...', 'Validate All Scrapers');
+    statusEl.textContent = 'Running validation on all scrapers...';
     statusEl.className = 'text-sm text-gray-400';
     resultsEl.classList.add('hidden');
 
-    fetch('/api/library/validate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scraperType: scraperType }),
-    })
+    fetch('/api/library/validate-all', { method: 'POST' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        btn.disabled = false;
-        btn.textContent = 'Validate Scraper';
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        setButtonBusy('validate-btn', false, 'Validating...', 'Validate All Scrapers');
 
         if (data.error) {
           statusEl.textContent = data.error;
@@ -152,25 +142,37 @@
           return;
         }
 
-        statusEl.textContent = data.success ? 'PASS' : 'FAIL';
-        statusEl.className = 'text-sm ' + (data.success ? 'text-green-400' : 'text-red-400');
+        var scrapers = Object.keys(data.results);
+        var allPass = scrapers.every(function (s) { return data.results[s].success; });
+        statusEl.textContent = allPass ? 'All PASS' : 'Some FAILED';
+        statusEl.className = 'text-sm ' + (allPass ? 'text-green-400' : 'text-red-400');
 
-        // Show field-by-field results
-        var html = '<table class="w-full text-xs"><thead><tr class="text-gray-500"><th class="text-left py-1">Field</th><th class="text-left py-1">Expected</th><th class="text-left py-1">Actual</th><th class="text-left py-1">Result</th></tr></thead><tbody>';
-        data.fields.forEach(function (f) {
-          var expected = Array.isArray(f.expected) ? f.expected.join(', ') : (f.expected || '—');
-          var actual = Array.isArray(f.actual) ? f.actual.join(', ') : (f.actual || '—');
-          var icon = f.match ? '<span class="text-green-400">✓</span>' : '<span class="text-red-400">✗</span>';
-          html += '<tr class="border-t border-gray-700"><td class="py-1 text-gray-300">' + f.field + '</td><td class="py-1 text-gray-400 truncate max-w-[200px]">' + escapeHtml(expected) + '</td><td class="py-1 text-gray-400 truncate max-w-[200px]">' + escapeHtml(actual) + '</td><td class="py-1">' + icon + '</td></tr>';
+        var html = '';
+        scrapers.forEach(function (name) {
+          var r = data.results[name];
+          var badge = r.success ? '<span class="px-2 py-0.5 rounded text-xs font-medium bg-green-900 text-green-300">PASS</span>'
+            : '<span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900 text-red-300">' + (r.error ? 'ERROR' : 'FAIL') + '</span>';
+          html += '<div class="border-b border-gray-700 last:border-0 py-2">';
+          html += '<div class="flex items-center gap-2">' + badge + '<span class="text-sm text-gray-300">' + escapeHtml(name) + '</span></div>';
+          if (r.error) {
+            html += '<p class="text-xs text-red-400 mt-1">' + escapeHtml(r.error) + '</p>';
+          } else if (r.fields && r.fields.length > 0) {
+            html += '<table class="w-full text-xs mt-1"><thead><tr class="text-gray-500"><th class="text-left py-1">Field</th><th class="text-left py-1">Expected</th><th class="text-left py-1">Actual</th><th class="text-left py-1"></th></tr></thead><tbody>';
+            r.fields.forEach(function (f) {
+              var expected = Array.isArray(f.expected) ? f.expected.join(', ') : (f.expected || '—');
+              var actual = Array.isArray(f.actual) ? f.actual.join(', ') : (f.actual || '—');
+              var icon = f.match ? '<span class="text-green-400">✓</span>' : '<span class="text-red-400">✗</span>';
+              html += '<tr class="border-t border-gray-700"><td class="py-1 text-gray-300">' + escapeHtml(f.field) + '</td><td class="py-1 text-gray-400">' + escapeHtml(expected) + '</td><td class="py-1 text-gray-400">' + escapeHtml(actual) + '</td><td class="py-1">' + icon + '</td></tr>';
+            });
+            html += '</tbody></table>';
+          }
+          html += '</div>';
         });
-        html += '</tbody></table>';
         resultsEl.innerHTML = html;
         resultsEl.classList.remove('hidden');
       })
       .catch(function (err) {
-        btn.disabled = false;
-        btn.textContent = 'Validate Scraper';
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        setButtonBusy('validate-btn', false, 'Validating...', 'Validate All Scrapers');
         statusEl.textContent = 'Failed: ' + err.message;
         statusEl.className = 'text-sm text-red-400';
       });
@@ -405,12 +407,42 @@
     });
   }
 
+  // Default scraper
+  var defaultScraperSelect = document.getElementById('default-scraper');
+  var defaultScraperStatus = document.getElementById('default-scraper-status');
+  if (defaultScraperSelect) {
+    defaultScraperSelect.addEventListener('change', function () {
+      fetch('/api/library/settings/default-scraper', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scraper: defaultScraperSelect.value }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          defaultScraperStatus.textContent = data.success ? 'Saved' : (data.error || 'Failed');
+          defaultScraperStatus.className = 'text-sm ' + (data.success ? 'text-green-400' : 'text-red-400');
+          setTimeout(function () { defaultScraperStatus.textContent = ''; }, 2000);
+        })
+        .catch(function (err) {
+          defaultScraperStatus.textContent = 'Failed: ' + err.message;
+          defaultScraperStatus.className = 'text-sm text-red-400';
+        });
+    });
+  }
+
   // Change password
   if (passwordForm) {
     passwordForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var currentPassword = document.getElementById('current-password').value;
       var newPassword = document.getElementById('new-password').value;
+      var confirmPassword = document.getElementById('confirm-password').value;
+
+      if (newPassword !== confirmPassword) {
+        passwordStatus.textContent = 'Passwords do not match';
+        passwordStatus.className = 'text-sm text-red-400';
+        return;
+      }
 
       fetch('/api/auth/password', {
         method: 'PUT',
