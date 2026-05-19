@@ -1,9 +1,9 @@
 <%- include('partials/head') %>
-<div class="max-w-3xl mx-auto p-6">
+<div class="max-w-3xl mx-auto p-4 sm:p-6 overflow-hidden">
   <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
   <!-- Library Paths -->
-  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold">Library Paths</h2>
       <span class="text-sm text-gray-500"><%= videoCount %> videos in library</span>
@@ -131,17 +131,17 @@
   </section>
 
   <!-- Batch Replace -->
-  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
     <h2 class="text-lg font-semibold mb-4">Batch Replace</h2>
 
     <div class="mb-4">
       <h3 class="text-sm font-medium text-gray-400 mb-2">Genres</h3>
       <div class="flex flex-wrap items-center gap-2">
-        <select id="genre-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+        <select id="genre-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
           <option value="">Source genre...</option>
         </select>
         <span class="text-gray-500 text-sm">&rarr;</span>
-        <input type="text" id="genre-dest" placeholder="Destination genre..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+        <input type="text" id="genre-dest" placeholder="Destination genre..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
         <button id="genre-replace-btn" onclick="batchReplace('genres')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
         <span id="genre-replace-status" class="text-sm text-gray-400"></span>
       </div>
@@ -151,11 +151,11 @@
     <div>
       <h3 class="text-sm font-medium text-gray-400 mb-2">Cast</h3>
       <div class="flex flex-wrap items-center gap-2">
-        <select id="cast-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+        <select id="cast-source" class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
           <option value="">Source cast...</option>
         </select>
         <span class="text-gray-500 text-sm">&rarr;</span>
-        <input type="text" id="cast-dest" placeholder="Destination cast..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[140px]">
+        <input type="text" id="cast-dest" placeholder="Destination cast..." class="bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 min-w-0 flex-1">
         <button id="cast-replace-btn" onclick="batchReplace('cast')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm transition-colors">Replace</button>
         <span id="cast-replace-status" class="text-sm text-gray-400"></span>
       </div>
@@ -165,7 +165,7 @@
 
   <!-- Validation Results -->
   <% if (validationResults && validationResults.length > 0) { %>
-  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
     <h2 class="text-lg font-semibold mb-4">Validation Results</h2>
     <% validationResults.forEach(function(r) { %>
     <div class="border-b border-gray-700 last:border-0 py-3">
@@ -210,7 +210,7 @@
   <% } %>
 
   <!-- Player Settings -->
-  <section class="bg-gray-800 rounded-lg p-6 mb-6">
+  <section class="bg-gray-800 rounded-lg p-4 sm:p-6 mb-6">
     <h2 class="text-lg font-semibold mb-4">Player Settings</h2>
     <div class="flex items-center gap-4">
       <label class="text-sm text-gray-400">Seek step</label>
@@ -226,7 +226,7 @@
   </section>
 
   <!-- Change Password -->
-  <section class="bg-gray-800 rounded-lg p-6">
+  <section class="bg-gray-800 rounded-lg p-4 sm:p-6">
     <h2 class="text-lg font-semibold mb-4">Change Password</h2>
     <form id="password-form" class="max-w-sm">
       <div class="mb-3">
