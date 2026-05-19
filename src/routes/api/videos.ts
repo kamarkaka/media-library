@@ -7,7 +7,9 @@ import {
   generateMasterPlaylist, isTranscoded, isTranscoding,
   getPlaylistContent, getSegmentPath, startTranscoding,
 } from '../../services/hls-transcoder';
+import path from 'path';
 import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
+import { config } from '../../config';
 
 const router = Router();
 
@@ -126,6 +128,22 @@ router.put('/:id', async (req, res) => {
       await db('cast_members').whereNotExists(function () {
         this.select(db.raw(1)).from('video_cast').whereRaw('video_cast.cast_id = cast_members.id');
       }).del();
+    }
+
+    // Rename cached cover image if video code changed
+    if (updates.code && updates.code !== video.code) {
+      const currentCover = updates.cover_image || video.cover_image;
+      if (currentCover && !currentCover.startsWith('http') && fs.existsSync(currentCover)) {
+        const ext = path.extname(currentCover);
+        const newFilename = updates.code.replace(/[/\\:*?"<>|]/g, '_') + ext;
+        const newPath = path.join(config.coverCacheDir, newFilename);
+        try {
+          fs.renameSync(currentCover, newPath);
+          updates.cover_image = newPath;
+        } catch (err: any) {
+          console.warn(`[api] Failed to rename cover image: ${err.message}`);
+        }
+      }
     }
 
     if (Object.keys(updates).length > 0) {
