@@ -224,7 +224,11 @@ router.post('/:id/scrape-all', async (req, res) => {
   const video: any = await db('videos').where('id', req.params.id).first();
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
-  const scraperNames = listScrapers();
+  const allScrapers = listScrapers();
+  const requested = req.body?.scrapers;
+  const scraperNames = Array.isArray(requested) && requested.length > 0
+    ? requested.filter((s: string) => allScrapers.includes(s))
+    : allScrapers;
   const results: Record<string, any> = {};
 
   for (const name of scraperNames) {

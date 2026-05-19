@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db';
 import { getVideoNeighbors } from '../services/video-queries';
+import { listScrapers } from '../scrapers/base';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.get('/:id', async (req, res) => {
     nextVideo,
     seekStep,
     canDirectPlay,
+    scrapers: listScrapers(),
   });
 });
 

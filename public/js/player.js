@@ -805,14 +805,28 @@
 
   if (scrapeAllBtn) {
     scrapeAllBtn.addEventListener('click', function () {
+      var selected = [];
+      document.querySelectorAll('.scraper-checkbox:checked').forEach(function (cb) {
+        selected.push(cb.value);
+      });
+      if (selected.length === 0) {
+        scrapeAllStatus.textContent = 'Select at least one scraper';
+        scrapeAllStatus.className = 'text-sm text-yellow-400';
+        return;
+      }
+
       scrapeAllBtn.disabled = true;
       scrapeAllBtn.classList.add('opacity-50');
-      scrapeAllStatus.innerHTML = '<span class="inline-block animate-spin mr-1">&#9696;</span> Scraping all sources... this may take a minute';
+      scrapeAllStatus.innerHTML = '<span class="inline-block animate-spin mr-1">&#9696;</span> Scraping ' + selected.length + ' source(s)... this may take a minute';
       scrapeAllStatus.className = 'text-sm text-yellow-400';
       comparisonTable.classList.add('hidden');
       applyWrapper.classList.add('hidden');
 
-      fetch('/api/videos/' + videoId + '/scrape-all', { method: 'POST' })
+      fetch('/api/videos/' + videoId + '/scrape-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scrapers: selected }),
+      })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data.error) {
