@@ -98,12 +98,31 @@ export class JAVFilmsScraper extends PuppeteerScraper {
 
     // Cast
     const cast: string[] = [];
-    $('.videodetailbox h2 a[href*="videos/cast"]')
-    .not('#relatedholder a')
+    const excludes: string[] = ['誕生日', '胸のサイズ', '身長', 'スリーサイズ', '血液型'];
+    $('.videodetailbox a[href*="videos/cast"] strong')
+    .not('#relatedholder a strong')
     .each((_, el) => {
       const text = $(el).text().trim();
-      if (text) cast.push(text);
+      if (!text) return;
+
+      for (const i in excludes) {
+        if (text.includes(excludes[i])) return;
+      }
+
+      if (cast.includes(text)) return;
+
+      cast.push(text);
     });
+
+    if (cast.length == 0) {
+      $('.videodetailbox h2 a[href*="videos/cast"]')
+      .not('#relatedholder a')
+      .each((_, el) => {
+        const text = $(el).text().trim();
+        if (!text) return;
+        cast.push(text);
+      });
+    }
     console.log(`[scraper:javfilms] cast (${cast.length}): ${cast.join(', ') || '(none)'}`);
 
     // Cover image

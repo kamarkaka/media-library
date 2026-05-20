@@ -9,6 +9,7 @@ const LAUNCH_ARGS = [
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
   '--disable-gpu',
+  '--window-size=1280,720',
 ];
 
 export async function launchBrowser(): Promise<Browser> {
