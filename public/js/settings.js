@@ -435,6 +435,25 @@
     });
   }
 
+  // Database refresh
+  window.dbRefresh = function () {
+    var statusEl = document.getElementById('db-refresh-status');
+    setButtonBusy('db-refresh-btn', true, 'Refreshing...', 'Refresh Database');
+    fetch('/api/library/db-refresh', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        setButtonBusy('db-refresh-btn', false, 'Refreshing...', 'Refresh Database');
+        statusEl.textContent = data.success ? 'Done' : (data.error || 'Failed');
+        statusEl.className = 'text-sm ' + (data.success ? 'text-green-400' : 'text-red-400');
+        setTimeout(function () { statusEl.textContent = ''; }, 2000);
+      })
+      .catch(function (err) {
+        setButtonBusy('db-refresh-btn', false, 'Refreshing...', 'Refresh Database');
+        statusEl.textContent = 'Failed: ' + err.message;
+        statusEl.className = 'text-sm text-red-400';
+      });
+  };
+
   // Change password
   if (passwordForm) {
     passwordForm.addEventListener('submit', function (e) {

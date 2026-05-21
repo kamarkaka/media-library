@@ -291,4 +291,9 @@ router.get('/cover-download/status', (_req, res) => {
   }
 });
 
+router.post('/db-refresh', async (_req, res) => {
+  await db.raw('PRAGMA wal_checkpoint(TRUNCATE)');
+  res.json({ success: true });
+});
+
 export default router;
