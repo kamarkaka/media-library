@@ -10,6 +10,7 @@ import {
 import path from 'path';
 import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 import { config } from '../../config';
+import { downloadCover } from '../../services/cover-downloader';
 
 const router = Router();
 
@@ -143,6 +144,19 @@ router.put('/:id', async (req, res) => {
         } catch (err: any) {
           console.warn(`[api] Failed to rename cover image: ${err.message}`);
         }
+      }
+    }
+
+    // Download cover image if URL changed to a remote URL
+    if (updates.cover_image && updates.cover_image.startsWith('http')) {
+      const code = updates.code || video.code;
+      if (code) {
+        // Delete old cached file if it exists
+        if (video.cover_image && !video.cover_image.startsWith('http') && fs.existsSync(video.cover_image)) {
+          fs.unlinkSync(video.cover_image);
+        }
+        const localPath = await downloadCover(updates.cover_image, code, config.coverCacheDir);
+        if (localPath) updates.cover_image = localPath;
       }
     }
 
