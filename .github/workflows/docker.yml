@@ -5,6 +5,9 @@ on:
     - cron: '0 8 * * *'
   workflow_dispatch: # Allows you to run this manually for testing
 
+permissions:
+  contents: write
+
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
@@ -12,7 +15,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6.0.2
         with:
-          fetch-depth: 0 # Fetches all history for accurate commit checking
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for recent commits
         id: check_commits
