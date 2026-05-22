@@ -25,6 +25,35 @@ jobs:
             echo "NO changes in the last 24 hours. Skipping."
           fi
 
+      - name: Determine version
+        if: steps.check_commits.outputs.new_commits == 'true'
+        id: version
+        run: |
+          # Get the latest version tag (e.g., v1.2.3)
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags yet — start at v1.0.0
+            NEW_VERSION="1.0.0"
+          else
+            # Strip the 'v' prefix
+            VERSION="${LATEST_TAG#v}"
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            PATCH=$(echo "$VERSION" | cut -d. -f3)
+            # Auto-bump patch version
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $NEW_VERSION"
+
+      - name: Create git tag
+        if: steps.check_commits.outputs.new_commits == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
       - name: Log in to Docker Hub
         if: steps.check_commits.outputs.new_commits == 'true'
         uses: docker/login-action@v4.0.0
@@ -39,4 +68,6 @@ jobs:
           context: .
           push: true
           no-cache: true
-          tags: kamarkaka4/media-library:latest,kamarkaka4/media-library:${{ github.sha }}
+          tags: |
+            kamarkaka4/media-library:latest
+            kamarkaka4/media-library:${{ steps.version.outputs.version }}
