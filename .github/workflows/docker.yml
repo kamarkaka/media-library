@@ -18,15 +18,19 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check for recent commits
+      - name: Check for changes since last build
         id: check_commits
         run: |
-          if [ -n "$(git log --since='24 hours ago' --oneline)" ]; then
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
             echo "new_commits=true" >> $GITHUB_OUTPUT
-            echo "Changes detected. Proceeding to build..."
+            echo "No tags found. First build."
+          elif [ -n "$(git log ${LATEST_TAG}..HEAD --oneline)" ]; then
+            echo "new_commits=true" >> $GITHUB_OUTPUT
+            echo "Changes detected since ${LATEST_TAG}. Proceeding to build..."
           else
             echo "new_commits=false" >> $GITHUB_OUTPUT
-            echo "NO changes in the last 24 hours. Skipping."
+            echo "No changes since ${LATEST_TAG}. Skipping."
           fi
 
       - name: Determine version
