@@ -10,6 +10,7 @@ export interface AppConfig {
   authUsername: string;
   authPasswordHash: string;
   sessionSecret: string;
+  validatorEnabled: boolean;
   validatorCron: string;
   hlsCacheDir: string;
   ffmpegPath: string;
@@ -23,6 +24,7 @@ export const config: AppConfig = {
   authUsername: 'admin',
   authPasswordHash: '',
   sessionSecret: '',
+  validatorEnabled: process.env.VALIDATOR_ENABLED !== 'false',
   validatorCron: process.env.VALIDATOR_CRON || '0 8 * * *',
   hlsCacheDir: process.env.HLS_CACHE_DIR || path.join(__dirname, '../data/hls-cache'),
   ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',

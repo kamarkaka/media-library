@@ -40,6 +40,11 @@ async function runAllValidations(): Promise<void> {
 }
 
 export function startValidatorScheduler(): void {
+  if (!config.validatorEnabled) {
+    console.log('[validator] Scheduler disabled (VALIDATOR_ENABLED=false)');
+    return;
+  }
+
   const cronExpr = config.validatorCron;
 
   if (!cron.validate(cronExpr)) {
