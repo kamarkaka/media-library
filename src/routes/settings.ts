@@ -15,6 +15,10 @@ router.get('/', async (req, res) => {
   const defaultScraperRow = await db('settings').where('key', 'default_scraper').first();
   const defaultScraper = defaultScraperRow ? defaultScraperRow.value : listScrapers()[0] || '';
 
+  const scraperFieldConfigRows = await db('scraper_field_config').select('field', 'scraper_type');
+  const scraperFieldConfig: Record<string, string> = {};
+  for (const row of scraperFieldConfigRows) scraperFieldConfig[row.field] = row.scraper_type;
+
   // Coverage results
   let coverageResults: any[] = [];
   let coverageTotalVideos = 0;
@@ -37,6 +41,7 @@ router.get('/', async (req, res) => {
     validationResults,
     seekStep,
     defaultScraper,
+    scraperFieldConfig,
     coverageResults,
     coverageTotalVideos,
   });

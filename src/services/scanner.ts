@@ -31,6 +31,7 @@ const scanProgress: ScanProgress = createProgress();
 const scrapeProgress: ScanProgress = createProgress();
 const coverageProgress: ScanProgress = createProgress();
 const coverDownloadProgress: ScanProgress = createProgress();
+const mergeProgress: ScanProgress = createProgress();
 
 export function getScanProgress(): ScanProgress {
   return { ...scanProgress };
@@ -132,4 +133,20 @@ export function startCoverDownload(): void {
   coverDownloadProgress.status = 'scanning';
   coverDownloadProgress.step = 'Starting cover download...';
   spawnWorker('cover-download-worker', {}, coverDownloadProgress);
+}
+
+export function getMergeProgress(): ScanProgress {
+  return { ...mergeProgress };
+}
+
+export function resetMergeProgress(): void {
+  Object.assign(mergeProgress, createProgress());
+}
+
+export function startMerge(): void {
+  if (mergeProgress.status === 'scanning') return;
+  Object.assign(mergeProgress, createProgress());
+  mergeProgress.status = 'scanning';
+  mergeProgress.step = 'Starting merge...';
+  spawnWorker('merge-worker', {}, mergeProgress);
 }

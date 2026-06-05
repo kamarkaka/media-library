@@ -24,6 +24,9 @@
   <div class="p-2">
     <% const cardTitle = video.name || video.filename; %>
     <p class="text-sm text-gray-200 break-words"><%= cardTitle %></p>
+    <% if (typeof video.file_count !== 'undefined' && video.file_count > 1) { %>
+    <span class="inline-block mt-0.5 text-[10px] bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded"><%= video.file_count %> files</span>
+    <% } %>
     <% if (video.release_date) { %>
     <p class="text-xs text-gray-500 mt-0.5 locale-date" data-date="<%= video.release_date %>"><%= video.release_date %></p>
     <% } %>

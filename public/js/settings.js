@@ -83,8 +83,8 @@
       if (scraperSelect) body.scraperType = scraperSelect.value;
     }
 
-    var busyTexts = { scan: 'Scanning...', scrape: 'Scraping...', 'cover-download': 'Downloading...' };
-    var defaultTexts = { scan: 'Scan Library', scrape: 'Scrape Metadata', 'cover-download': 'Download Cover Images' };
+    var busyTexts = { scan: 'Scanning...', scrape: 'Scraping...', 'cover-download': 'Downloading...', 'merge-dupes': 'Merging...' };
+    var defaultTexts = { scan: 'Scan Library', scrape: 'Scrape Metadata', 'cover-download': 'Download Cover Images', 'merge-dupes': 'Merge Duplicate-Code Videos' };
     var busyText = busyTexts[type] || 'Processing...';
     var defaultText = defaultTexts[type] || type;
 
@@ -124,6 +124,42 @@
   window.setCoverDownloadButtonBusy = function (busy) {
     setButtonBusy('cover-download-btn', busy, 'Downloading...', 'Download Cover Images');
   };
+  window.setMergeDupesButtonBusy = function (busy) {
+    setButtonBusy('merge-dupes-btn', busy, 'Merging...', 'Merge Duplicate-Code Videos');
+  };
+
+  // --- Advanced options toggle ---
+  var advToggle = document.getElementById('advanced-options-toggle');
+  var advContent = document.getElementById('advanced-options');
+  var advChevron = document.getElementById('advanced-chevron');
+  if (advToggle && advContent) {
+    advToggle.addEventListener('click', function () {
+      var isHidden = advContent.style.display === 'none';
+      advContent.style.display = isHidden ? 'block' : 'none';
+      advChevron.classList.toggle('rotate-90', isHidden);
+    });
+  }
+
+  // Per-field scraper config
+  document.querySelectorAll('.scraper-field-select').forEach(function (select) {
+    select.addEventListener('change', function () {
+      var body = {};
+      body[select.dataset.field] = select.value;
+      var statusEl = document.getElementById('scraper-config-status');
+      fetch('/api/library/scraper-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          statusEl.textContent = data.success ? 'Saved' : (data.error || 'Failed');
+          statusEl.className = 'text-xs mt-1 block ' + (data.success ? 'text-green-400' : 'text-red-400');
+          setTimeout(function () { statusEl.textContent = ''; }, 2000);
+        })
+        .catch(function () {});
+    });
+  });
 
   // --- Validate scraper ---
   window.validateAllScrapers = function () {

@@ -47,6 +47,12 @@ function applyFilters(query: Knex.QueryBuilder, filters: VideoFilters): Knex.Que
         .orWhere('videos.name', 'like', like)
         .orWhereExists(function (this: Knex.QueryBuilder) {
           this.select(db.raw(1))
+            .from('video_files')
+            .whereRaw('video_files.video_id = videos.id')
+            .where('video_files.filename', 'like', like);
+        })
+        .orWhereExists(function (this: Knex.QueryBuilder) {
+          this.select(db.raw(1))
             .from('video_genres')
             .join('genres', 'video_genres.genre_id', 'genres.id')
             .whereRaw('video_genres.video_id = videos.id')
@@ -102,7 +108,13 @@ export async function queryVideos(filters: VideoFilters) {
   const countResult = (await applyFilters(db('videos'), filters).count('* as total').first()) as any;
   const total: number = countResult?.total || 0;
 
-  let query = applyFilters(db('videos').select('videos.*'), filters);
+  let query = applyFilters(
+    db('videos').select(
+      'videos.*',
+      db.raw('(select count(*) from video_files where video_files.video_id = videos.id) as file_count'),
+    ),
+    filters,
+  );
 
   if (sort === 'last_viewed') {
     query = query

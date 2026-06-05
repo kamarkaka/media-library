@@ -16,15 +16,15 @@ const QUALITY_LEVELS: QualityLevel[] = [
   { name: '1080p', height: 1080, bitrate: '5000k', bandwidth: 6000000 },
 ];
 
-// Track active transcoding jobs: key = "<videoId>/<quality>"
+// Track active transcoding jobs: key = "<videoId>/<fileKey>/<quality>"
 const activeJobs = new Map<string, ChildProcess>();
 
-function getCacheDir(videoId: string, quality: string): string {
-  return path.join(config.hlsCacheDir, videoId, quality);
+function getCacheDir(videoId: string, fileKey: string, quality: string): string {
+  return path.join(config.hlsCacheDir, videoId, fileKey, quality);
 }
 
-function getPlaylistPath(videoId: string, quality: string): string {
-  return path.join(getCacheDir(videoId, quality), 'playlist.m3u8');
+function getPlaylistPath(videoId: string, fileKey: string, quality: string): string {
+  return path.join(getCacheDir(videoId, fileKey, quality), 'playlist.m3u8');
 }
 
 export function getAvailableQualities(sourceHeight: number | null): QualityLevel[] {
@@ -32,15 +32,16 @@ export function getAvailableQualities(sourceHeight: number | null): QualityLevel
   return QUALITY_LEVELS.filter(q => q.height <= h);
 }
 
-export function generateMasterPlaylist(videoId: string, sourceHeight: number | null): string {
+export function generateMasterPlaylist(videoId: string, sourceHeight: number | null, fileKey: string): string {
   const qualities = getAvailableQualities(sourceHeight);
+  const sel = fileKey && fileKey !== 'default' ? `?file=${fileKey}` : '';
 
   let playlist = '#EXTM3U\n';
 
   // Add transcoded quality levels
   for (const q of qualities) {
     playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${q.bandwidth},RESOLUTION=${Math.round(q.height * 16 / 9)}x${q.height},NAME="${q.name}"\n`;
-    playlist += `/api/videos/${videoId}/hls/${q.name}\n`;
+    playlist += `/api/videos/${videoId}/hls/${q.name}${sel}\n`;
   }
 
   // Always add original quality as highest bandwidth
@@ -51,22 +52,22 @@ export function generateMasterPlaylist(videoId: string, sourceHeight: number | n
     ? `,RESOLUTION=${Math.round(sourceHeight * 16 / 9)}x${sourceHeight}`
     : '';
   playlist += `#EXT-X-STREAM-INF:BANDWIDTH=${origBandwidth}${resTag},NAME="original"\n`;
-  playlist += `/api/videos/${videoId}/hls/original\n`;
+  playlist += `/api/videos/${videoId}/hls/original${sel}\n`;
 
   return playlist;
 }
 
-export function isTranscoded(videoId: string, quality: string): boolean {
-  const playlistPath = getPlaylistPath(videoId, quality);
+export function isTranscoded(videoId: string, fileKey: string, quality: string): boolean {
+  const playlistPath = getPlaylistPath(videoId, fileKey, quality);
   return fs.existsSync(playlistPath);
 }
 
-export function isTranscoding(videoId: string, quality: string): boolean {
-  return activeJobs.has(`${videoId}/${quality}`);
+export function isTranscoding(videoId: string, fileKey: string, quality: string): boolean {
+  return activeJobs.has(`${videoId}/${fileKey}/${quality}`);
 }
 
-export function getPlaylistContent(videoId: string, quality: string): string | null {
-  const playlistPath = getPlaylistPath(videoId, quality);
+export function getPlaylistContent(videoId: string, fileKey: string, quality: string): string | null {
+  const playlistPath = getPlaylistPath(videoId, fileKey, quality);
   try {
     return fs.readFileSync(playlistPath, 'utf-8');
   } catch {
@@ -74,26 +75,27 @@ export function getPlaylistContent(videoId: string, quality: string): string | n
   }
 }
 
-export function getSegmentPath(videoId: string, quality: string, segment: string): string {
-  return path.join(getCacheDir(videoId, quality), segment);
+export function getSegmentPath(videoId: string, fileKey: string, quality: string, segment: string): string {
+  return path.join(getCacheDir(videoId, fileKey, quality), segment);
 }
 
 export function startTranscoding(
   videoId: string,
+  fileKey: string,
   quality: string,
   inputPath: string,
   sourceVideoCodec: string | null,
   sourceAudioCodec: string | null,
 ): Promise<void> {
-  const jobKey = `${videoId}/${quality}`;
+  const jobKey = `${videoId}/${fileKey}/${quality}`;
   if (activeJobs.has(jobKey)) {
-    return waitForPlaylist(videoId, quality);
+    return waitForPlaylist(videoId, fileKey, quality);
   }
 
-  const cacheDir = getCacheDir(videoId, quality);
+  const cacheDir = getCacheDir(videoId, fileKey, quality);
   fs.mkdirSync(cacheDir, { recursive: true });
 
-  const playlistPath = getPlaylistPath(videoId, quality);
+  const playlistPath = getPlaylistPath(videoId, fileKey, quality);
   const segmentPattern = path.join(cacheDir, 'seg%04d.ts');
 
   let args: string[];
@@ -133,7 +135,7 @@ export function startTranscoding(
     ];
   }
 
-  console.log(`[hls] Starting transcode: ${videoId}/${quality}`);
+  console.log(`[hls] Starting transcode: ${jobKey}`);
   const proc = spawn(config.ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
   activeJobs.set(jobKey, proc);
 
@@ -147,24 +149,24 @@ export function startTranscoding(
   proc.on('close', (code) => {
     activeJobs.delete(jobKey);
     if (code === 0) {
-      console.log(`[hls] Transcode complete: ${videoId}/${quality}`);
+      console.log(`[hls] Transcode complete: ${jobKey}`);
     } else {
-      console.error(`[hls] Transcode failed (exit ${code}): ${videoId}/${quality}`);
+      console.error(`[hls] Transcode failed (exit ${code}): ${jobKey}`);
     }
   });
 
   proc.on('error', (err) => {
     activeJobs.delete(jobKey);
-    console.error(`[hls] Transcode error: ${videoId}/${quality}:`, err.message);
+    console.error(`[hls] Transcode error: ${jobKey}:`, err.message);
   });
 
-  return waitForPlaylist(videoId, quality);
+  return waitForPlaylist(videoId, fileKey, quality);
 }
 
 // Wait for the playlist file to appear (FFmpeg writes it once the first segment is ready)
-function waitForPlaylist(videoId: string, quality: string): Promise<void> {
-  const playlistPath = getPlaylistPath(videoId, quality);
-  const jobKey = `${videoId}/${quality}`;
+function waitForPlaylist(videoId: string, fileKey: string, quality: string): Promise<void> {
+  const playlistPath = getPlaylistPath(videoId, fileKey, quality);
+  const jobKey = `${videoId}/${fileKey}/${quality}`;
   return new Promise((resolve, reject) => {
     let elapsed = 0;
     const interval = setInterval(() => {

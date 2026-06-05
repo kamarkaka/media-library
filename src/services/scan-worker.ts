@@ -5,6 +5,8 @@ import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import knexInit from 'knex';
 import { config } from '../config';
+import { cleanupCache } from './hls-transcoder';
+import { pickDefaultFile, setDefaultFile } from './merge-helpers';
 import type { ScanProgress } from './scanner';
 
 const { fullScan } = workerData as { fullScan: boolean };
@@ -139,14 +141,16 @@ async function run(): Promise<void> {
       }
     }
 
-    const existingVideos = await db('videos').select('id', 'full_path', 'length');
-    const existingByPath = new Map(existingVideos.map((v: any) => [v.full_path, { id: v.id, length: v.length }]));
+    // Identity/staleness is tracked per physical file in video_files (a videos entry may own many files)
+    const existingFiles = await db('video_files')
+      .select('id as file_id', 'video_id', 'full_path', 'length', 'is_default');
+    const existingByPath = new Map(existingFiles.map((f: any) => [f.full_path, f]));
     const allFilesSet = new Set(allFiles);
-    const staleIds = existingVideos.filter((v: any) => !allFilesSet.has(v.full_path)).map((v: any) => v.id);
+    const staleFiles = existingFiles.filter((f: any) => !allFilesSet.has(f.full_path));
 
     const newFiles = allFiles.filter((f) => !existingByPath.has(f));
     const filesToProcess = fullScan ? allFiles : newFiles;
-    console.log(`[scan] Found ${allFiles.length} files on disk (${newFiles.length} new, ${allFiles.length - newFiles.length} existing, ${staleIds.length} stale)`);
+    console.log(`[scan] Found ${allFiles.length} files on disk (${newFiles.length} new, ${allFiles.length - newFiles.length} existing, ${staleFiles.length} stale)`);
     if (!fullScan && filesToProcess.length < allFiles.length) {
       console.log(`[scan] Quick scan — processing ${filesToProcess.length} new files only`);
     }
@@ -169,12 +173,26 @@ async function run(): Promise<void> {
           progress({ step: 'Adding to database' });
           console.log(`[scan] ${label} ${filename} — adding to database`);
           const videoId = uuidv4();
+          const fileId = uuidv4();
           const info = getVideoInfo(filePath);
-          await db('videos').insert({
-            id: videoId,
-            filename,
-            full_path: filePath,
-            ...videoInfoColumns(info),
+          const cols = videoInfoColumns(info);
+          // A new file starts as its own single-file entry; the merge pass collapses same-code entries later
+          await db.transaction(async (trx) => {
+            await trx('videos').insert({
+              id: videoId,
+              filename,
+              full_path: filePath,
+              default_file_id: fileId,
+              ...cols,
+            });
+            await trx('video_files').insert({
+              id: fileId,
+              video_id: videoId,
+              filename,
+              full_path: filePath,
+              is_default: 1,
+              ...cols,
+            });
           });
           console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
           added++;
@@ -183,7 +201,12 @@ async function run(): Promise<void> {
             progress({ step: 'Probing video info' });
             console.log(`[scan] ${label} ${filename} — probing video info`);
             const info = getVideoInfo(filePath);
-            await db('videos').where('id', existing.id).update(videoInfoColumns(info));
+            const cols = videoInfoColumns(info);
+            await db('video_files').where('id', existing.file_id).update(cols);
+            // Keep the videos-row mirror in sync when re-probing its default file
+            if (existing.is_default) {
+              await db('videos').where('id', existing.video_id).update(cols);
+            }
             console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
           }
           updated++;
@@ -192,6 +215,7 @@ async function run(): Promise<void> {
       } catch (err) {
         console.error(`[scan] ${label} ${filename} — FAILED:`, err);
         if (isNew) {
+          await db('video_files').where('full_path', filePath).del().catch(() => {});
           await db('videos').where('full_path', filePath).del().catch(() => {});
         }
       }
@@ -201,11 +225,38 @@ async function run(): Promise<void> {
     }
 
     let removed = 0;
-    if (staleIds.length > 0) {
-      progress({ step: 'Removing stale entries' });
-      console.log(`[scan] Removing ${staleIds.length} stale entries`);
-      await db('videos').whereIn('id', staleIds).del();
-      removed = staleIds.length;
+    if (staleFiles.length > 0) {
+      progress({ step: 'Removing stale files' });
+      console.log(`[scan] Removing ${staleFiles.length} stale files`);
+      const staleFileIds = staleFiles.map((f: any) => f.file_id);
+      await db('video_files').whereIn('id', staleFileIds).del();
+      removed = staleFiles.length;
+
+      // Delete videos entries that now have zero files (cascades genres/cast/playback/field_sources)
+      const affectedVideoIds = [...new Set(staleFiles.map((f: any) => f.video_id))];
+      const emptyVideoIds = (await db('videos')
+        .whereIn('videos.id', affectedVideoIds)
+        .whereNotExists(function () {
+          this.select(db.raw(1)).from('video_files').whereRaw('video_files.video_id = videos.id');
+        })
+        .select('id')).map((v: any) => v.id);
+      for (const vid of emptyVideoIds) cleanupCache(vid);
+      if (emptyVideoIds.length > 0) {
+        await db('videos').whereIn('id', emptyVideoIds).del();
+      }
+
+      // Repair entries that lost their default file but still have other files
+      const survivors = affectedVideoIds.filter((id) => !emptyVideoIds.includes(id));
+      for (const vid of survivors) {
+        const v = await db('videos').where('id', vid).first();
+        const stillExists = v.default_file_id
+          ? await db('video_files').where('id', v.default_file_id).first()
+          : null;
+        if (!stillExists) {
+          const replacement = await pickDefaultFile(db, vid);
+          if (replacement) await setDefaultFile(db, vid, replacement);
+        }
+      }
     }
 
     console.log(`[scan] Complete — added ${added}, updated ${updated}, removed ${removed}`);

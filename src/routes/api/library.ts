@@ -5,6 +5,7 @@ import {
   resetScanProgress, resetScrapeProgress,
   startCoverage, getCoverageProgress, resetCoverageProgress,
   startCoverDownload, getCoverDownloadProgress, resetCoverDownloadProgress,
+  startMerge, getMergeProgress, resetMergeProgress,
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig, listScrapers } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
@@ -150,6 +151,32 @@ router.post('/auto-match', async (_req, res) => {
   }
 });
 
+router.get('/scraper-config', async (_req, res) => {
+  const rows = await db('scraper_field_config').select('field', 'scraper_type');
+  const config: Record<string, string> = {};
+  for (const row of rows) config[row.field] = row.scraper_type;
+  res.json(config);
+});
+
+router.put('/scraper-config', async (req, res) => {
+  const fields = req.body;
+  if (!fields || typeof fields !== 'object') {
+    return res.status(400).json({ error: 'Expected field config object' });
+  }
+  const validFields = ['code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image', 'genres', 'cast'];
+  for (const [field, scraperType] of Object.entries(fields)) {
+    if (!validFields.includes(field)) continue;
+    if (scraperType) {
+      await db('scraper_field_config')
+        .insert({ field, scraper_type: scraperType as string })
+        .onConflict('field').merge();
+    } else {
+      await db('scraper_field_config').where('field', field).del();
+    }
+  }
+  res.json({ success: true });
+});
+
 router.put('/settings/seek-step', async (req, res) => {
   const step = parseInt(req.body.step, 10);
   if (![5, 10, 15, 30].includes(step)) {
@@ -288,6 +315,24 @@ router.get('/cover-download/status', (_req, res) => {
   res.json(progress);
   if (progress.status === 'done' || progress.status === 'error') {
     resetCoverDownloadProgress();
+  }
+});
+
+// Merge entries that share the same code into one (files become selectable in the player)
+router.post('/merge-dupes', (_req, res) => {
+  const progress = getMergeProgress();
+  if (progress.status === 'scanning') {
+    return res.json({ success: false, message: 'Merge already in progress' });
+  }
+  startMerge();
+  res.json({ success: true });
+});
+
+router.get('/merge-dupes/status', (_req, res) => {
+  const progress = getMergeProgress();
+  res.json(progress);
+  if (progress.status === 'done' || progress.status === 'error') {
+    resetMergeProgress();
   }
 });
 

@@ -14,6 +14,23 @@ import { downloadCover } from '../../services/cover-downloader';
 
 const router = Router();
 
+// Resolve which physical file to serve. ?file=<id> selects a specific file; absent => the
+// entry's default file. The served path always comes from the DB row, never the client string.
+async function resolveFile(video: any, fileSel: any): Promise<{
+  fileKey: string; fullPath: string; videoCodec: string | null; audioCodec: string | null; height: number | null;
+}> {
+  if (fileSel) {
+    const f = await db('video_files').where({ id: String(fileSel), video_id: video.id }).first();
+    if (f) return { fileKey: f.id, fullPath: f.full_path, videoCodec: f.video_codec, audioCodec: f.audio_codec, height: f.height };
+  }
+  const def = video.default_file_id
+    ? await db('video_files').where('id', video.default_file_id).first()
+    : await db('video_files').where({ video_id: video.id, is_default: 1 }).first();
+  if (def) return { fileKey: def.id, fullPath: def.full_path, videoCodec: def.video_codec, audioCodec: def.audio_codec, height: def.height };
+  // Legacy fallback (no video_files rows yet): use the videos-row mirror
+  return { fileKey: 'default', fullPath: video.full_path, videoCodec: video.video_codec, audioCodec: video.audio_codec, height: video.height };
+}
+
 // Paginated video list (JSON, for infinite scroll)
 router.get('/', async (req, res) => {
   const filters = parseVideoFilters(req.query as Record<string, any>);
@@ -29,15 +46,17 @@ router.get('/:id/stream', async (req, res) => {
     return res.status(404).json({ error: 'Video not found' });
   }
 
+  const file = await resolveFile(video, req.query.file);
+
   let stat;
   try {
-    stat = fs.statSync(video.full_path);
+    stat = fs.statSync(file.fullPath);
   } catch {
     return res.status(404).json({ error: 'Video file not found on disk' });
   }
 
   const fileSize = stat.size;
-  const mimeType = mime.lookup(video.full_path) || 'video/mp4';
+  const mimeType = mime.lookup(file.fullPath) || 'video/mp4';
 
   const range = req.headers.range;
   if (range) {
@@ -52,14 +71,14 @@ router.get('/:id/stream', async (req, res) => {
       'Content-Length': chunkSize,
       'Content-Type': mimeType,
     });
-    fs.createReadStream(video.full_path, { start, end }).pipe(res);
+    fs.createReadStream(file.fullPath, { start, end }).pipe(res);
   } else {
     res.writeHead(200, {
       'Content-Length': fileSize,
       'Content-Type': mimeType,
       'Accept-Ranges': 'bytes',
     });
-    fs.createReadStream(video.full_path).pipe(res);
+    fs.createReadStream(file.fullPath).pipe(res);
   }
 });
 
@@ -105,7 +124,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const allowedFields = [
-      'code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image', 'source_url',
+      'code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image',
     ];
     const updates: Record<string, any> = {};
     for (const field of allowedFields) {
@@ -165,6 +184,18 @@ router.put('/:id', async (req, res) => {
       await db('videos').where('id', req.params.id).update(updates);
     }
 
+    // Track field sources: use fieldSources from body (scrape comparison) or default to 'manual'
+    const fieldSources: Record<string, string> = req.body.fieldSources || {};
+    const trackedFields = ['code', 'name', 'release_date', 'director', 'maker', 'label', 'cover_image', 'genres', 'cast'];
+    for (const field of trackedFields) {
+      if (field in req.body) {
+        const source = fieldSources[field] || 'manual';
+        await db('field_sources')
+          .insert({ video_id: req.params.id, field, source })
+          .onConflict(['video_id', 'field']).merge();
+      }
+    }
+
     const updated = await db('videos').where('id', req.params.id).first();
     res.json(updated);
   } catch (err: any) {
@@ -222,7 +253,8 @@ router.get('/:id/hls', async (req, res) => {
   const video: any = await db('videos').where('id', req.params.id).first();
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
-  const playlist = generateMasterPlaylist(video.id, video.height);
+  const file = await resolveFile(video, req.query.file);
+  const playlist = generateMasterPlaylist(video.id, file.height, file.fileKey);
   res.type('application/vnd.apple.mpegurl').send(playlist);
 });
 
@@ -232,21 +264,23 @@ router.get('/:id/hls/:quality', async (req, res) => {
   if (!video) return res.status(404).json({ error: 'Video not found' });
 
   const { quality } = req.params;
+  const file = await resolveFile(video, req.query.file);
 
-  if (!isTranscoded(video.id, quality)) {
+  if (!isTranscoded(video.id, file.fileKey, quality)) {
     try {
       // startTranscoding is idempotent — if already running, it waits for the playlist
-      await startTranscoding(video.id, quality, video.full_path, video.video_codec, video.audio_codec);
+      await startTranscoding(video.id, file.fileKey, quality, file.fullPath, file.videoCodec, file.audioCodec);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
   }
 
-  const content = getPlaylistContent(video.id, quality);
+  const content = getPlaylistContent(video.id, file.fileKey, quality);
   if (!content) return res.status(500).json({ error: 'Playlist not available' });
 
-  // Rewrite segment paths to include the quality prefix
-  const rewritten = content.replace(/^(seg\d+\.ts)$/gm, `/api/videos/${video.id}/hls/${quality}/$1`);
+  // Rewrite segment paths to absolute URLs, carrying the file selector forward
+  const sel = file.fileKey && file.fileKey !== 'default' ? `?file=${file.fileKey}` : '';
+  const rewritten = content.replace(/^(seg\d+\.ts)$/gm, `/api/videos/${video.id}/hls/${quality}/$1${sel}`);
   res.type('application/vnd.apple.mpegurl').send(rewritten);
 });
 
@@ -255,7 +289,13 @@ router.get('/:id/hls/:quality/:segment', async (req, res) => {
   const { id, quality, segment } = req.params;
   if (!/^seg\d+\.ts$/.test(segment)) return res.status(400).json({ error: 'Invalid segment' });
 
-  const segPath = getSegmentPath(id, quality, segment);
+  // fileKey comes straight from the variant playlist's ?file selector (a video_files id or 'default').
+  // Sanitized to a safe charset so it can't escape the cache dir; a bad value just misses the cache.
+  // No DB lookup here — this is the per-segment hot path.
+  const fileSel = req.query.file ? String(req.query.file) : 'default';
+  const fileKey = /^[a-z0-9-]+$/i.test(fileSel) ? fileSel : 'default';
+
+  const segPath = getSegmentPath(id, fileKey, quality, segment);
   if (!fs.existsSync(segPath)) return res.status(404).json({ error: 'Segment not found' });
 
   res.type('video/mp2t').sendFile(segPath);

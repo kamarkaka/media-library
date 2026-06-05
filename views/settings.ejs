@@ -79,7 +79,43 @@
       </label>
       <span id="scrape-status" class="text-sm text-gray-400"></span>
     </div>
-    <p class="text-xs text-gray-600 mb-4">Scrape resolves source URLs and fetches metadata using the selected default scraper. Full scrape re-fetches all videos.</p>
+    <p class="text-xs text-gray-600">Scrape resolves source URLs and fetches metadata using the selected default scraper. Full scrape re-fetches all videos.</p>
+
+    <!-- Advanced Options -->
+    <button type="button" id="advanced-options-toggle" class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 mt-3 transition-colors">
+      <svg id="advanced-chevron" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      Advanced Options
+    </button>
+    <div id="advanced-options" style="display: none" class="mt-3">
+      <p class="text-xs text-gray-500 mb-2">Assign a specific scraper to each metadata field. Leave as "Default" to use the default scraper above.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+        <% var fields = [
+          { key: 'code', label: 'Code' },
+          { key: 'name', label: 'Name' },
+          { key: 'release_date', label: 'Release Date' },
+          { key: 'director', label: 'Director' },
+          { key: 'maker', label: 'Maker' },
+          { key: 'label', label: 'Label' },
+          { key: 'cover_image', label: 'Cover Image' },
+          { key: 'genres', label: 'Genres' },
+          { key: 'cast', label: 'Cast' },
+        ]; %>
+        <% fields.forEach(function(f) { %>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-400 w-24 flex-shrink-0"><%= f.label %></span>
+          <select class="scraper-field-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 flex-1" data-field="<%= f.key %>">
+            <option value="">Default</option>
+            <% scrapers.forEach(function(s) { %>
+            <option value="<%= s %>" <%= scraperFieldConfig[f.key] === s ? 'selected' : '' %>><%= s %></option>
+            <% }) %>
+          </select>
+        </div>
+        <% }) %>
+      </div>
+      <span id="scraper-config-status" class="text-xs text-gray-400 mt-1 block"></span>
+    </div>
 
     <!-- Validate scrapers -->
     <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
@@ -223,6 +259,16 @@
       <span id="auto-match-status" class="text-sm text-gray-400"></span>
     </div>
     <p class="text-xs text-gray-600 mt-1">Marks videos as matched if they have code, name, cover image, and release date.</p>
+
+    <!-- Merge duplicate-code videos -->
+    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+      <button id="merge-dupes-btn" onclick="startJob('merge-dupes')"
+        class="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded text-sm transition-colors">
+        Merge Duplicate-Code Videos
+      </button>
+      <span id="merge-dupes-status" class="text-sm text-gray-400"></span>
+    </div>
+    <p class="text-xs text-gray-600 mt-1">Combines videos that share the same code into one entry; the files become selectable in the player.</p>
   </section>
 
   <!-- 3. Player Settings -->

@@ -8,7 +8,8 @@
        data-seek-step="<%= seekStep %>"
        data-direct-play="<%= canDirectPlay ? '1' : '' %>"
        data-stream-url="/api/videos/<%= video.id %>/stream"
-       data-hls-url="/api/videos/<%= video.id %>/hls">
+       data-hls-url="/api/videos/<%= video.id %>/hls"
+       data-files="<%= encodeURIComponent(JSON.stringify(files || [])) %>">
     <video id="video-player" class="w-full" style="max-width: 960px" playsinline></video>
 
     <% if (video.cover_image) { %>
@@ -21,6 +22,12 @@
       </button>
     </div>
     <% } %>
+
+    <!-- File Selector (top left) — only shown when an entry has multiple files -->
+    <div id="file-wrapper" class="absolute top-3 left-3 z-10 select-none hidden" style="max-width: 960px;">
+      <button id="btn-file" class="text-xs text-white/70 hover:text-white transition-colors px-2 py-0.5 bg-black/50 border border-white/20 rounded">Files</button>
+      <div id="file-menu" class="absolute top-full left-0 mt-1 bg-gray-900/95 border border-gray-700 rounded shadow-lg hidden min-w-[160px] max-w-[320px]"></div>
+    </div>
 
     <!-- Quality Selector (top right) -->
     <div id="quality-wrapper" class="absolute top-3 right-3 z-10 select-none" style="max-width: 960px;">
@@ -95,18 +102,26 @@
       </div>
     </div>
 
+    <%
+      function esc(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+      function srcBadge(field) {
+        var s = fieldSources[field];
+        if (!s) return '';
+        var cls = s === 'manual' ? 'text-yellow-500' : 'text-gray-600';
+        return ' <span class="text-[10px] ' + cls + '">[' + esc(s) + ']</span>';
+      }
+    %>
     <!-- Read-only view -->
     <div id="details-view" class="text-sm text-gray-400 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-2">
-      <div class="flex justify-between"><span class="text-gray-500">Code</span><span class="text-gray-300 ml-2" data-view="code"><%= video.code || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Name</span><span class="text-gray-300 truncate ml-2" data-view="name"><%= video.name || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Release Date</span><span class="text-gray-300 ml-2" data-view="release_date" data-date="<%= video.release_date || '' %>"><%= video.release_date || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Director</span><span class="text-gray-300 ml-2" data-view="director"><%= video.director || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Maker</span><span class="text-gray-300 ml-2" data-view="maker"><%= video.maker || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Label</span><span class="text-gray-300 ml-2" data-view="label"><%= video.label || '—' %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Cover Image</span><span class="text-gray-300 truncate ml-2" data-view="cover_image"><% if (video.cover_image) { %><a href="<%= video.cover_image %>" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs"><%= video.cover_image %></a><% } else { %>—<% } %></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Source URL</span><span class="text-gray-300 truncate ml-2" data-view="source_url"><% if (video.source_url) { %><a href="<%= video.source_url %>" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs"><%= video.source_url %></a><% } else { %>—<% } %></span></div>
-      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Genres</span><span class="text-gray-300 ml-2" data-view="genres"><% if (genres.length) { genres.forEach(function(g, i) { %><a href="/?genre=<%= encodeURIComponent(g.name) %>" class="text-blue-400 hover:text-blue-300"><%= g.name %><% if (g.alias) { %> <span class="text-gray-400">(<%= g.alias %>)</span><% } %></a><%= i < genres.length - 1 ? ', ' : '' %><% }); } else { %>—<% } %></span></div>
-      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Cast</span><span class="text-gray-300 ml-2" data-view="cast"><% if (cast.length) { cast.forEach(function(c, i) { %><a href="/?cast=<%= encodeURIComponent(c.name) %>" class="text-blue-400 hover:text-blue-300"><%= c.name %></a><%= i < cast.length - 1 ? ', ' : '' %><% }); } else { %>—<% } %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Code</span><span class="text-gray-300 ml-2" data-view="code"><%= video.code || '—' %><%- srcBadge('code') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Name</span><span class="text-gray-300 truncate ml-2" data-view="name"><%= video.name || '—' %><%- srcBadge('name') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Release Date</span><span class="text-gray-300 ml-2" data-view="release_date" data-date="<%= video.release_date || '' %>"><%= video.release_date || '—' %><%- srcBadge('release_date') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Director</span><span class="text-gray-300 ml-2" data-view="director"><%= video.director || '—' %><%- srcBadge('director') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Maker</span><span class="text-gray-300 ml-2" data-view="maker"><%= video.maker || '—' %><%- srcBadge('maker') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Label</span><span class="text-gray-300 ml-2" data-view="label"><%= video.label || '—' %><%- srcBadge('label') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Cover Image</span><span class="text-gray-300 truncate ml-2" data-view="cover_image"><% if (video.cover_image) { %><a href="<%= video.cover_image %>" target="_blank" class="text-blue-400 hover:text-blue-300 truncate block max-w-xs"><%= video.cover_image %></a><% } else { %>—<% } %><%- srcBadge('cover_image') %></span></div>
+      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Genres</span><span class="text-gray-300 ml-2" data-view="genres"><% if (genres.length) { genres.forEach(function(g, i) { %><a href="/?genre=<%= encodeURIComponent(g.name) %>" class="text-blue-400 hover:text-blue-300"><%= g.name %><% if (g.alias) { %> <span class="text-gray-400">(<%= g.alias %>)</span><% } %></a><%= i < genres.length - 1 ? ', ' : '' %><% }); } else { %>—<% } %><%- srcBadge('genres') %></span></div>
+      <div class="flex justify-between sm:col-span-2"><span class="text-gray-500">Cast</span><span class="text-gray-300 ml-2" data-view="cast"><% if (cast.length) { cast.forEach(function(c, i) { %><a href="/?cast=<%= encodeURIComponent(c.name) %>" class="text-blue-400 hover:text-blue-300"><%= c.name %></a><%= i < cast.length - 1 ? ', ' : '' %><% }); } else { %>—<% } %><%- srcBadge('cast') %></span></div>
     </div>
 
     <!-- Edit form (hidden by default) -->
@@ -145,11 +160,6 @@
         <div>
           <label class="block text-gray-500 mb-1">Cover Image URL</label>
           <input type="text" name="cover_image" value="<%= video.cover_image || '' %>"
-            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
-        </div>
-        <div>
-          <label class="block text-gray-500 mb-1">Source URL</label>
-          <input type="text" name="source_url" value="<%= video.source_url || '' %>"
             class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
         </div>
         <%- include('partials/video-tags', { tagType: 'genres', tagLabel: 'Genres', tagItems: genres, tagPlaceholder: 'Add genre...' }) %>
@@ -201,7 +211,7 @@
       Metadata
     </button>
     <div id="metadata-content" class="text-sm text-gray-400 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-4" style="display: grid">
-      <div class="flex justify-between"><span class="text-gray-500">Filename</span><span class="text-gray-300 truncate ml-2"><%= video.filename %></span></div>
+      <div class="flex justify-between<%= files && files.length > 1 ? ' sm:col-span-2 md:col-span-4' : '' %>"><span class="text-gray-500">Filename<%= files && files.length > 1 ? 's (' + files.length + ')' : '' %></span><span class="text-gray-300 ml-2 <%= files && files.length > 1 ? 'break-words' : 'truncate' %>"><% if (files && files.length > 1) { %><%= files.map(function(f){ return f.filename; }).join('  •  ') %><% } else { %><%= video.filename %><% } %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Duration</span><span class="text-gray-300"><%= video.length != null ? Math.floor(video.length / 60) + 'm ' + (video.length % 60) + 's' : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Resolution</span><span class="text-gray-300"><%= video.width && video.height ? video.width + ' × ' + video.height : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Video Codec</span><span class="text-gray-300"><%= video.video_codec || '—' %></span></div>

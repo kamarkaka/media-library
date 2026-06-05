@@ -9,6 +9,9 @@
   var directPlay = container.dataset.directPlay === '1';
   var streamUrl = container.dataset.streamUrl;
   var hlsUrl = container.dataset.hlsUrl;
+  var files = [];
+  try { files = JSON.parse(decodeURIComponent(container.dataset.files || '%5B%5D')); } catch (e) {}
+  var currentFileId = null;
   var hasResumed = false;
   var hlsInstance = null;
 
@@ -20,25 +23,39 @@
     video.currentTime = resumePosition;
   }
 
-  if (directPlay) {
-    video.src = streamUrl;
-  } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-    hlsInstance = new Hls();
-    hlsInstance.loadSource(hlsUrl);
-    hlsInstance.attachMedia(video);
-    hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-      setupQualitySelector();
-    });
-    hlsInstance.on(Hls.Events.LEVEL_LOADED, function (_, data) {
-      if (data.details && data.details.totalduration) {
-        hlsDuration = data.details.totalduration;
-      }
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = hlsUrl;
-  } else {
-    video.src = streamUrl;
+  // Load (or switch to) a source. Direct-play is decided PER FILE — each file carries its own flag.
+  function loadSource(f) {
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+    if (f) {
+      directPlay = f.directPlay;
+      streamUrl = f.streamUrl;
+      hlsUrl = f.hlsUrl;
+      currentFileId = f.id;
+    }
+    if (directPlay) {
+      video.src = streamUrl;
+    } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+      hlsInstance = new Hls();
+      hlsInstance.loadSource(hlsUrl);
+      hlsInstance.attachMedia(video);
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+        setupQualitySelector();
+      });
+      hlsInstance.on(Hls.Events.LEVEL_LOADED, function (_, data) {
+        if (data.details && data.details.totalduration) {
+          hlsDuration = data.details.totalduration;
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = hlsUrl;
+    } else {
+      video.src = streamUrl;
+    }
   }
+
+  // Initial source: the default (alphabetically-first) file, else the container's single-file URLs
+  var initialFile = files.length ? (files.filter(function (f) { return f.isDefault; })[0] || files[0]) : null;
+  loadSource(initialFile);
 
   // Wait until the video is actually playable before seeking to resume position
   video.addEventListener('canplay', seekToResume, { once: true });
@@ -124,7 +141,7 @@
   var swiping = false;
 
   container.addEventListener('touchstart', function (e) {
-    if (e.target.closest('#player-controls') || e.target.closest('#quality-wrapper')) return;
+    if (e.target.closest('#player-controls') || e.target.closest('#quality-wrapper') || e.target.closest('#file-wrapper')) return;
     touchStartX = e.touches[0].clientX;
     touchStartTime = Date.now();
     swiping = true;
@@ -359,6 +376,51 @@
     });
   }
 
+  // --- File Selector (multiple files per entry) ---
+  var btnFile = document.getElementById('btn-file');
+  var fileMenu = document.getElementById('file-menu');
+  var fileWrapper = document.getElementById('file-wrapper');
+
+  function renderFileMenu() {
+    if (!fileMenu) return;
+    var html = '';
+    files.forEach(function (f) {
+      var active = f.id === currentFileId;
+      html += '<div class="px-3 py-1.5 text-xs cursor-pointer hover:bg-gray-700 break-words ' +
+        (active ? 'text-blue-400' : 'text-gray-300') + '" data-file-id="' + f.id + '">' + escapeHtml(f.filename) + '</div>';
+    });
+    fileMenu.innerHTML = html;
+    fileMenu.querySelectorAll('[data-file-id]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var fid = el.dataset.fileId;
+        if (fid === currentFileId) { fileMenu.classList.add('hidden'); return; }
+        var f = files.filter(function (x) { return x.id === fid; })[0];
+        if (!f) return;
+        // Preserve playback position and play state across the switch
+        var wasPlaying = !video.paused;
+        var resumeAt = video.currentTime;
+        loadSource(f);
+        video.addEventListener('canplay', function onSwitch() {
+          video.removeEventListener('canplay', onSwitch);
+          if (resumeAt > 0) { try { video.currentTime = resumeAt; } catch (e) {} }
+          if (wasPlaying) video.play();
+        });
+        fileMenu.classList.add('hidden');
+        renderFileMenu();
+      });
+    });
+  }
+
+  if (fileWrapper && btnFile && fileMenu && files.length > 1) {
+    fileWrapper.classList.remove('hidden');
+    btnFile.addEventListener('click', function (e) {
+      e.stopPropagation();
+      fileMenu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', function () { fileMenu.classList.add('hidden'); });
+    renderFileMenu();
+  }
+
   // --- Playback logging ---
 
   // Log: start or resume
@@ -482,7 +544,7 @@
       dateSpan.textContent = dateInput.value ? formatLocaleDate(dateInput.value) : '—';
     }
     // URL fields: show as link or "—"
-    ['cover_image', 'source_url'].forEach(function (field) {
+    ['cover_image'].forEach(function (field) {
       var input = detailsForm.querySelector('[name="' + field + '"]');
       var span = detailsView.querySelector('[data-view="' + field + '"]');
       if (input && span) {
@@ -928,6 +990,7 @@
       if (!scrapeResults) return;
 
       var body = {};
+      var fieldSources = {};
       scrapeFields.forEach(function (field) {
         var selected = comparisonTable.querySelector('.scrape-option[data-field="' + field.key + '"][data-selected="1"]');
         if (selected) {
@@ -936,11 +999,13 @@
           if (meta && meta[field.key] !== undefined && meta[field.key] !== null) {
             var val = meta[field.key];
             body[field.putKey] = Array.isArray(val) ? val.join(', ') : val;
+            fieldSources[field.putKey] = scraperName;
           }
         }
       });
+      if (Object.keys(fieldSources).length > 0) body.fieldSources = fieldSources;
 
-      if (Object.keys(body).length === 0) {
+      if (Object.keys(fieldSources).length === 0) {
         applyStatus.textContent = 'No fields selected';
         applyStatus.className = 'text-sm text-yellow-400 ml-2';
         return;
