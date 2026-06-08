@@ -7,6 +7,7 @@ import knexInit from 'knex';
 import { config } from '../config';
 import { cleanupCache } from './hls-transcoder';
 import { pickDefaultFile, setDefaultFile } from './merge-helpers';
+import { removeThumbnailsForFile } from './thumbnail-generator';
 import type { ScanProgress } from './scanner';
 
 const { fullScan } = workerData as { fullScan: boolean };
@@ -230,6 +231,7 @@ async function run(): Promise<void> {
       console.log(`[scan] Removing ${staleFiles.length} stale files`);
       const staleFileIds = staleFiles.map((f: any) => f.file_id);
       await db('video_files').whereIn('id', staleFileIds).del();
+      for (const fid of staleFileIds) removeThumbnailsForFile(fid);
       removed = staleFiles.length;
 
       // Delete videos entries that now have zero files (cascades genres/cast/playback/field_sources)

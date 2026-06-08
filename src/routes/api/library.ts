@@ -6,6 +6,7 @@ import {
   startCoverage, getCoverageProgress, resetCoverageProgress,
   startCoverDownload, getCoverDownloadProgress, resetCoverDownloadProgress,
   startMerge, getMergeProgress, resetMergeProgress,
+  startThumbnail, getThumbnailProgress, resetThumbnailProgress,
 } from '../../services/scanner';
 import { runValidation, getValidatorConfig, listScrapers } from '../../scrapers/base';
 import { getLatestValidationResults } from '../../services/validator-scheduler';
@@ -193,6 +194,15 @@ router.put('/settings/default-scraper', async (req, res) => {
   res.json({ success: true, scraper });
 });
 
+router.put('/settings/thumbnail-count', async (req, res) => {
+  const count = parseInt(req.body.count, 10);
+  if (![5, 10, 15, 20, 30].includes(count)) {
+    return res.status(400).json({ error: 'Invalid count value' });
+  }
+  await setSetting('thumbnail_count', String(count));
+  res.json({ success: true, count });
+});
+
 // Batch replace genre or cast across all videos
 router.post('/batch-replace', async (req, res) => {
   const { type, source, destination } = req.body;
@@ -333,6 +343,24 @@ router.get('/merge-dupes/status', (_req, res) => {
   res.json(progress);
   if (progress.status === 'done' || progress.status === 'error') {
     resetMergeProgress();
+  }
+});
+
+// Generate thumbnails for every file in the library (N per file)
+router.post('/thumbnails', (_req, res) => {
+  const progress = getThumbnailProgress();
+  if (progress.status === 'scanning') {
+    return res.json({ success: false, message: 'Thumbnail generation already in progress' });
+  }
+  startThumbnail();
+  res.json({ success: true });
+});
+
+router.get('/thumbnails/status', (_req, res) => {
+  const progress = getThumbnailProgress();
+  res.json(progress);
+  if (progress.status === 'done' || progress.status === 'error') {
+    resetThumbnailProgress();
   }
 });
 

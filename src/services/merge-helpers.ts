@@ -129,6 +129,9 @@ export async function mergeAllDuplicates(
         if (losers.length > 0) {
           mergedGroups++;
           removedRows += losers.length;
+          // HLS caches are keyed by videoId, so the deleted losers' must be cleared. Thumbnails are
+          // keyed by the stable video_files.id and are intentionally preserved — the files are
+          // re-parented onto the survivor (not deleted), so their snapshots stay valid.
           for (const id of losers) cleanupCache(id);
         }
       } catch (err: any) {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import db from '../db';
+import db, { getIntSetting } from '../db';
 import { listScrapers } from '../scrapers/base';
 import { getLatestValidationResults } from '../services/validator-scheduler';
 
@@ -10,8 +10,8 @@ router.get('/', async (req, res) => {
   const countResult = (await db('videos').count('* as count').first()) as any;
 
   const validationResults = await getLatestValidationResults();
-  const seekStepRow = await db('settings').where('key', 'seek_step').first();
-  const seekStep = seekStepRow ? parseInt(seekStepRow.value, 10) || 10 : 10;
+  const seekStep = await getIntSetting(db, 'seek_step', 10);
+  const thumbnailCount = await getIntSetting(db, 'thumbnail_count', 10);
   const defaultScraperRow = await db('settings').where('key', 'default_scraper').first();
   const defaultScraper = defaultScraperRow ? defaultScraperRow.value : listScrapers()[0] || '';
 
@@ -40,6 +40,7 @@ router.get('/', async (req, res) => {
     scrapers: listScrapers(),
     validationResults,
     seekStep,
+    thumbnailCount,
     defaultScraper,
     scraperFieldConfig,
     coverageResults,

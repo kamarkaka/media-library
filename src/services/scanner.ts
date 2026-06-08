@@ -32,6 +32,7 @@ const scrapeProgress: ScanProgress = createProgress();
 const coverageProgress: ScanProgress = createProgress();
 const coverDownloadProgress: ScanProgress = createProgress();
 const mergeProgress: ScanProgress = createProgress();
+const thumbnailProgress: ScanProgress = createProgress();
 
 export function getScanProgress(): ScanProgress {
   return { ...scanProgress };
@@ -149,4 +150,20 @@ export function startMerge(): void {
   mergeProgress.status = 'scanning';
   mergeProgress.step = 'Starting merge...';
   spawnWorker('merge-worker', {}, mergeProgress);
+}
+
+export function getThumbnailProgress(): ScanProgress {
+  return { ...thumbnailProgress };
+}
+
+export function resetThumbnailProgress(): void {
+  Object.assign(thumbnailProgress, createProgress());
+}
+
+export function startThumbnail(): void {
+  if (thumbnailProgress.status === 'scanning') return;
+  Object.assign(thumbnailProgress, createProgress());
+  thumbnailProgress.status = 'scanning';
+  thumbnailProgress.step = 'Starting thumbnail generation...';
+  spawnWorker('thumbnail-worker', {}, thumbnailProgress);
 }

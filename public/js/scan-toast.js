@@ -35,7 +35,7 @@
 
   function stopPolling() {
     polling = false;
-    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy, 'cover-download': window.setCoverDownloadButtonBusy, 'merge-dupes': window.setMergeDupesButtonBusy };
+    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy, 'cover-download': window.setCoverDownloadButtonBusy, 'merge-dupes': window.setMergeDupesButtonBusy, thumbnails: window.setThumbnailsButtonBusy };
     var setBusy = busyFns[activeJobType];
     if (setBusy) setBusy(false);
     activeJobType = null;
@@ -63,7 +63,7 @@
     if (!polling) return;
 
     var statusUrl = '/api/library/' + activeJobType + '/status';
-    var labels = { scan: 'Scan', scrape: 'Scrape', coverage: 'Coverage', 'cover-download': 'Cover Download', 'merge-dupes': 'Merge' };
+    var labels = { scan: 'Scan', scrape: 'Scrape', coverage: 'Coverage', 'cover-download': 'Cover Download', 'merge-dupes': 'Merge', thumbnails: 'Thumbnails' };
     var label = labels[activeJobType] || 'Job';
 
     fetch(statusUrl)
@@ -137,11 +137,11 @@
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     activeJobType = type || 'scan';
     idleRetries = 0;
-    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy, 'cover-download': window.setCoverDownloadButtonBusy, 'merge-dupes': window.setMergeDupesButtonBusy };
+    var busyFns = { scan: window.setScanButtonBusy, scrape: window.setScrapeButtonBusy, coverage: window.setCoverageButtonBusy, 'cover-download': window.setCoverDownloadButtonBusy, 'merge-dupes': window.setMergeDupesButtonBusy, thumbnails: window.setThumbnailsButtonBusy };
     var setBusy = busyFns[activeJobType];
     if (setBusy) setBusy(true);
     setSpinnerActive();
-    var labels = { scan: 'scan', scrape: 'scrape', coverage: 'coverage test', 'cover-download': 'cover download', 'merge-dupes': 'merge' };
+    var labels = { scan: 'scan', scrape: 'scrape', coverage: 'coverage test', 'cover-download': 'cover download', 'merge-dupes': 'merge', thumbnails: 'thumbnail generation' };
     toastCount.textContent = 'Starting ' + (labels[activeJobType] || 'job') + '...';
     toastFile.textContent = '';
     toastStep.textContent = '';
@@ -169,4 +169,5 @@
   checkActiveJob('coverage');
   checkActiveJob('cover-download');
   checkActiveJob('merge-dupes');
+  checkActiveJob('thumbnails');
 })();

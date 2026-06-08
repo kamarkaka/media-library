@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import db from '../db';
+import db, { getIntSetting } from '../db';
 import { getVideoNeighbors } from '../services/video-queries';
 import { listScrapers } from '../scrapers/base';
+import { listThumbnailsForFile } from '../services/thumbnail-generator';
 
 const router = Router();
 
@@ -35,8 +36,7 @@ router.get('/:id', async (req, res) => {
 
   const { prev: prevVideo, next: nextVideo } = await getVideoNeighbors(video);
 
-  const seekStepRow = await db('settings').where('key', 'seek_step').first();
-  const seekStep = seekStepRow ? parseInt(seekStepRow.value, 10) || 10 : 10;
+  const seekStep = await getIntSetting(db, 'seek_step', 10);
 
   // Load all physical files for this entry (alphabetical; the first is the default to play)
   const fileRows = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc');
@@ -47,6 +47,7 @@ router.get('/:id', async (req, res) => {
     directPlay: computeDirectPlay(f.full_path, f.video_codec, f.audio_codec),
     streamUrl: `/api/videos/${video.id}/stream?file=${f.id}`,
     hlsUrl: `/api/videos/${video.id}/hls?file=${f.id}`,
+    thumbnails: listThumbnailsForFile(video.id, f),
   }));
 
   // Direct-play decision is per file; use the default file (falling back to the videos-row mirror)

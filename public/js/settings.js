@@ -83,8 +83,8 @@
       if (scraperSelect) body.scraperType = scraperSelect.value;
     }
 
-    var busyTexts = { scan: 'Scanning...', scrape: 'Scraping...', 'cover-download': 'Downloading...', 'merge-dupes': 'Merging...' };
-    var defaultTexts = { scan: 'Scan Library', scrape: 'Scrape Metadata', 'cover-download': 'Download Cover Images', 'merge-dupes': 'Merge Duplicate-Code Videos' };
+    var busyTexts = { scan: 'Scanning...', scrape: 'Scraping...', 'cover-download': 'Downloading...', 'merge-dupes': 'Merging...', thumbnails: 'Generating...' };
+    var defaultTexts = { scan: 'Scan Library', scrape: 'Scrape Metadata', 'cover-download': 'Download Cover Images', 'merge-dupes': 'Merge Duplicate-Code Videos', thumbnails: 'Generate Thumbnails' };
     var busyText = busyTexts[type] || 'Processing...';
     var defaultText = defaultTexts[type] || type;
 
@@ -126,6 +126,9 @@
   };
   window.setMergeDupesButtonBusy = function (busy) {
     setButtonBusy('merge-dupes-btn', busy, 'Merging...', 'Merge Duplicate-Code Videos');
+  };
+  window.setThumbnailsButtonBusy = function (busy) {
+    setButtonBusy('thumbnails-btn', busy, 'Generating...', 'Generate Thumbnails');
   };
 
   // --- Advanced options toggle ---
@@ -444,6 +447,29 @@
         .catch(function (err) {
           seekStepStatus.textContent = 'Failed: ' + err.message;
           seekStepStatus.className = 'text-sm text-red-400';
+        });
+    });
+  }
+
+  // Thumbnails per file
+  var thumbnailCountSelect = document.getElementById('thumbnail-count-select');
+  var thumbnailCountStatus = document.getElementById('thumbnail-count-status');
+  if (thumbnailCountSelect) {
+    thumbnailCountSelect.addEventListener('change', function () {
+      fetch('/api/library/settings/thumbnail-count', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: parseInt(thumbnailCountSelect.value, 10) }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          thumbnailCountStatus.textContent = data.success ? 'Saved' : (data.error || 'Failed');
+          thumbnailCountStatus.className = 'text-sm ' + (data.success ? 'text-green-400' : 'text-red-400');
+          setTimeout(function () { thumbnailCountStatus.textContent = ''; }, 2000);
+        })
+        .catch(function (err) {
+          thumbnailCountStatus.textContent = 'Failed: ' + err.message;
+          thumbnailCountStatus.className = 'text-sm text-red-400';
         });
     });
   }

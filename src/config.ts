@@ -15,6 +15,7 @@ export interface AppConfig {
   hlsCacheDir: string;
   ffmpegPath: string;
   coverCacheDir: string;
+  thumbnailCacheDir: string;
 }
 
 export const config: AppConfig = {
@@ -29,4 +30,5 @@ export const config: AppConfig = {
   hlsCacheDir: process.env.HLS_CACHE_DIR || path.join(__dirname, '../data/hls-cache'),
   ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
   coverCacheDir: process.env.COVER_CACHE_DIR || path.join(__dirname, '../data/covers'),
+  thumbnailCacheDir: process.env.THUMBNAIL_CACHE_DIR || path.join(__dirname, '../data/thumbnails'),
 };

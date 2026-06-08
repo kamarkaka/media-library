@@ -1,4 +1,5 @@
 import knexInit from 'knex';
+import type { Knex } from 'knex';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
@@ -236,6 +237,12 @@ export async function initDatabase(): Promise<void> {
 
 export async function setSetting(key: string, value: string): Promise<void> {
   await db('settings').insert({ key, value }).onConflict('key').merge();
+}
+
+// Read an integer setting (e.g. seek_step, thumbnail_count), falling back when unset/invalid.
+export async function getIntSetting(dbh: Knex, key: string, fallback: number): Promise<number> {
+  const row = await dbh('settings').where('key', key).first();
+  return row ? parseInt(row.value, 10) || fallback : fallback;
 }
 
 export default db;

@@ -53,6 +53,16 @@
     }
   }
 
+  // Switch the active source to file `f`, then seek to `seekTo` once playable (optionally resume play)
+  function switchToFile(f, seekTo, autoplay) {
+    loadSource(f);
+    video.addEventListener('canplay', function once() {
+      video.removeEventListener('canplay', once);
+      if (seekTo > 0) { try { video.currentTime = seekTo; } catch (e) {} }
+      if (autoplay) video.play();
+    });
+  }
+
   // Initial source: the default (alphabetically-first) file, else the container's single-file URLs
   var initialFile = files.length ? (files.filter(function (f) { return f.isDefault; })[0] || files[0]) : null;
   loadSource(initialFile);
@@ -397,14 +407,7 @@
         var f = files.filter(function (x) { return x.id === fid; })[0];
         if (!f) return;
         // Preserve playback position and play state across the switch
-        var wasPlaying = !video.paused;
-        var resumeAt = video.currentTime;
-        loadSource(f);
-        video.addEventListener('canplay', function onSwitch() {
-          video.removeEventListener('canplay', onSwitch);
-          if (resumeAt > 0) { try { video.currentTime = resumeAt; } catch (e) {} }
-          if (wasPlaying) video.play();
-        });
+        switchToFile(f, video.currentTime, !video.paused);
         fileMenu.classList.add('hidden');
         renderFileMenu();
       });
@@ -419,6 +422,92 @@
     });
     document.addEventListener('click', function () { fileMenu.classList.add('hidden'); });
     renderFileMenu();
+  }
+
+  // --- Thumbnails ---
+  var thumbCarousel = document.getElementById('thumbnail-carousel');
+  var genThumbsBtn = document.getElementById('generate-thumbnails-btn');
+  var thumbsStatus = document.getElementById('thumbnails-status');
+
+  function renderThumbnails(fileGroups) {
+    var multi = fileGroups.length > 1;
+    var html = '';
+    fileGroups.forEach(function (f) {
+      if (multi) html += '<div class="text-xs text-gray-500 mb-1 truncate">' + escapeHtml(f.filename) + '</div>';
+      html += '<div class="flex gap-2 overflow-x-auto pb-2 mb-2" style="scroll-snap-type: x mandatory;">';
+      if (f.thumbnails && f.thumbnails.length) {
+        f.thumbnails.forEach(function (th) {
+          html += '<img src="' + th.url + '" loading="lazy" data-file-id="' + f.id + '" data-t="' + th.t +
+            '" class="h-24 rounded cursor-pointer flex-shrink-0" style="scroll-snap-align: start;">';
+        });
+      } else {
+        html += '<span class="text-xs text-gray-600 self-center">No thumbnails yet</span>';
+      }
+      html += '</div>';
+    });
+    thumbCarousel.innerHTML = html;
+  }
+
+  // Click a thumbnail → seek to its timestamp, switching to that file first if needed
+  if (thumbCarousel) {
+    thumbCarousel.addEventListener('click', function (e) {
+      var img = e.target.closest('img[data-file-id]');
+      if (!img) return;
+      var fileId = img.dataset.fileId;
+      var t = parseFloat(img.dataset.t) || 0;
+      if (fileId !== currentFileId) {
+        var f = files.filter(function (x) { return x.id === fileId; })[0];
+        if (f) { switchToFile(f, t, true); return; }
+      }
+      try { video.currentTime = t; } catch (err) {}
+    });
+  }
+
+  // Initial render from the server-provided file list
+  if (thumbCarousel) renderThumbnails(files);
+
+  if (genThumbsBtn) {
+    genThumbsBtn.addEventListener('click', function () {
+      genThumbsBtn.disabled = true;
+      genThumbsBtn.classList.add('opacity-50');
+      genThumbsBtn.textContent = 'Generating…';
+      thumbsStatus.textContent = 'Generating thumbnails for all files… this may take a moment';
+      thumbsStatus.className = 'text-sm text-yellow-400';
+      fetch('/api/videos/' + videoId + '/thumbnails', { method: 'POST' })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (!result.ok) {
+            thumbsStatus.textContent = result.data.error || 'Failed';
+            thumbsStatus.className = 'text-sm text-red-400';
+            return;
+          }
+          var groups = result.data.files || [];
+          renderThumbnails(groups);
+          // Keep the in-memory files' thumbnails in sync for click-to-seek after a switch
+          groups.forEach(function (g) {
+            var f = files.filter(function (x) { return x.id === g.id; })[0];
+            if (f) f.thumbnails = g.thumbnails;
+          });
+          var errs = result.data.errors || [];
+          if (errs.length) {
+            thumbsStatus.textContent = 'Done with ' + errs.length + ' error(s): ' + errs[0];
+            thumbsStatus.className = 'text-sm text-yellow-400';
+          } else {
+            thumbsStatus.textContent = 'Done!';
+            thumbsStatus.className = 'text-sm text-green-400';
+          }
+          genThumbsBtn.textContent = 'Re-generate';
+        })
+        .catch(function (err) {
+          thumbsStatus.textContent = 'Failed: ' + err.message;
+          thumbsStatus.className = 'text-sm text-red-400';
+        })
+        .finally(function () {
+          genThumbsBtn.disabled = false;
+          genThumbsBtn.classList.remove('opacity-50');
+          if (genThumbsBtn.textContent === 'Generating…') genThumbsBtn.textContent = 'Generate';
+        });
+    });
   }
 
   // --- Playback logging ---
