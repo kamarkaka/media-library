@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db, { getIntSetting } from '../db';
 import { getVideoNeighbors } from '../services/video-queries';
 import { listScrapers } from '../scrapers/base';
-import { listThumbnailsForFile } from '../services/thumbnail-generator';
+import { listThumbnailsForCode } from '../services/thumbnail-generator';
 
 const router = Router();
 
@@ -47,8 +47,10 @@ router.get('/:id', async (req, res) => {
     directPlay: computeDirectPlay(f.full_path, f.video_codec, f.audio_codec),
     streamUrl: `/api/videos/${video.id}/stream?file=${f.id}`,
     hlsUrl: `/api/videos/${video.id}/hls?file=${f.id}`,
-    thumbnails: listThumbnailsForFile(video.id, f),
   }));
+
+  // Thumbnails are stored per code (continuous across the entry's files)
+  const thumbnails = listThumbnailsForCode(video.id, video.code);
 
   // Direct-play decision is per file; use the default file (falling back to the videos-row mirror)
   const defaultFile = files.length ? files[0] : null;
@@ -72,6 +74,7 @@ router.get('/:id', async (req, res) => {
     seekStep,
     canDirectPlay,
     files,
+    thumbnails,
     scrapers: listScrapers(),
     fieldSources,
   });

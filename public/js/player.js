@@ -11,6 +11,8 @@
   var hlsUrl = container.dataset.hlsUrl;
   var files = [];
   try { files = JSON.parse(decodeURIComponent(container.dataset.files || '%5B%5D')); } catch (e) {}
+  var thumbnails = [];
+  try { thumbnails = JSON.parse(decodeURIComponent(container.dataset.thumbnails || '%5B%5D')); } catch (e) {}
   var currentFileId = null;
   var hasResumed = false;
   var hlsInstance = null;
@@ -429,22 +431,18 @@
   var genThumbsBtn = document.getElementById('generate-thumbnails-btn');
   var thumbsStatus = document.getElementById('thumbnails-status');
 
-  function renderThumbnails(fileGroups) {
-    var multi = fileGroups.length > 1;
-    var html = '';
-    fileGroups.forEach(function (f) {
-      if (multi) html += '<div class="text-xs text-gray-500 mb-1 truncate">' + escapeHtml(f.filename) + '</div>';
-      html += '<div class="flex gap-2 overflow-x-auto pb-2 mb-2" style="scroll-snap-type: x mandatory;">';
-      if (f.thumbnails && f.thumbnails.length) {
-        f.thumbnails.forEach(function (th) {
-          html += '<img src="' + th.url +
-            '" loading="lazy" class="h-24 rounded cursor-pointer flex-shrink-0" style="scroll-snap-align: start;">';
-        });
-      } else {
-        html += '<span class="text-xs text-gray-600 self-center">No thumbnails yet</span>';
-      }
-      html += '</div>';
+  function renderThumbnails(thumbs) {
+    if (!thumbCarousel) return;
+    if (!thumbs || !thumbs.length) {
+      thumbCarousel.innerHTML = '<span class="text-xs text-gray-600">No thumbnails yet</span>';
+      return;
+    }
+    var html = '<div class="flex gap-2 overflow-x-auto pb-2" style="scroll-snap-type: x mandatory;">';
+    thumbs.forEach(function (th) {
+      html += '<img src="' + th.url +
+        '" loading="lazy" class="h-24 rounded cursor-pointer flex-shrink-0" style="scroll-snap-align: start;">';
     });
+    html += '</div>';
     thumbCarousel.innerHTML = html;
   }
 
@@ -484,8 +482,8 @@
     });
   }
 
-  // Initial render from the server-provided file list
-  if (thumbCarousel) renderThumbnails(files);
+  // Initial render from the server-provided thumbnail list
+  renderThumbnails(thumbnails);
 
   if (genThumbsBtn) {
     genThumbsBtn.addEventListener('click', function () {
@@ -502,21 +500,10 @@
             thumbsStatus.className = 'text-sm text-red-400';
             return;
           }
-          var groups = result.data.files || [];
-          renderThumbnails(groups);
-          // Keep the in-memory files' thumbnails in sync so a later carousel re-render is correct
-          groups.forEach(function (g) {
-            var f = files.filter(function (x) { return x.id === g.id; })[0];
-            if (f) f.thumbnails = g.thumbnails;
-          });
-          var errs = result.data.errors || [];
-          if (errs.length) {
-            thumbsStatus.textContent = 'Done with ' + errs.length + ' error(s): ' + errs[0];
-            thumbsStatus.className = 'text-sm text-yellow-400';
-          } else {
-            thumbsStatus.textContent = 'Done!';
-            thumbsStatus.className = 'text-sm text-green-400';
-          }
+          thumbnails = result.data.thumbnails || [];
+          renderThumbnails(thumbnails);
+          thumbsStatus.textContent = 'Done!';
+          thumbsStatus.className = 'text-sm text-green-400';
           genThumbsBtn.textContent = 'Re-generate';
         })
         .catch(function (err) {

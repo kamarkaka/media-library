@@ -11,7 +11,7 @@ import path from 'path';
 import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 import { config } from '../../config';
 import { downloadCover } from '../../services/cover-downloader';
-import { listThumbnailsForFile, generateThumbnailsForFile, getThumbnailDir } from '../../services/thumbnail-generator';
+import { listThumbnailsForCode, generateThumbnailsForEntry } from '../../services/thumbnail-generator';
 
 const router = Router();
 
@@ -101,54 +101,48 @@ router.get('/:id/cover', async (req, res) => {
   stream.pipe(res);
 });
 
-// Thumbnails are generated per physical file; list them grouped by file for the entry.
-async function listEntryThumbnails(video: any): Promise<any[]> {
-  const fileRows = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc');
-  return fileRows.map((f: any) => ({
-    id: f.id,
-    filename: f.filename,
-    thumbnails: listThumbnailsForFile(video.id, f),
-  }));
-}
-
-// Generate N thumbnails for EVERY file of this entry (N = thumbnail_count setting, default 10)
+// Generate `thumbnail_count` snapshots per file for this entry, numbered continuously under <code>/
 router.post('/:id/thumbnails', async (req, res) => {
   const video: any = await db('videos').where('id', req.params.id).first();
   if (!video) return res.status(404).json({ error: 'Video not found' });
+  if (!video.code) return res.status(400).json({ error: 'Video has no code; thumbnails are stored by code' });
 
   const count = await getIntSetting(db, 'thumbnail_count', 10);
+  const files = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc').select('full_path', 'length');
+  if (files.length === 0) return res.status(400).json({ error: 'No files for this video' });
 
-  const fileRows = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc');
-  if (fileRows.length === 0) return res.status(400).json({ error: 'No files for this video' });
-
-  const errors: string[] = [];
-  for (const f of fileRows) {
-    try {
-      await generateThumbnailsForFile(f, count);
-    } catch (err: any) {
-      errors.push(`${f.filename}: ${err.message}`);
-    }
+  try {
+    await generateThumbnailsForEntry(video.code, files, count);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
   }
-
-  res.json({ files: await listEntryThumbnails(video), errors });
+  res.json({ thumbnails: listThumbnailsForCode(video.id, video.code) });
 });
 
-// List existing thumbnails for the entry (grouped by file)
+// List existing thumbnails for the entry
 router.get('/:id/thumbnails', async (req, res) => {
   const video: any = await db('videos').where('id', req.params.id).first();
   if (!video) return res.status(404).json({ error: 'Video not found' });
-  res.json({ files: await listEntryThumbnails(video) });
+  res.json({ thumbnails: listThumbnailsForCode(video.id, video.code) });
 });
 
-// Serve one thumbnail image. fileId/filename are sanitized so they can't escape the cache dir.
-router.get('/:id/thumbnails/:fileId/:filename', (req, res) => {
-  const { fileId, filename } = req.params;
-  if (!/^[a-z0-9-]+$/i.test(fileId) || !/^\d{3}\.jpeg$/.test(filename)) {
+// Serve one thumbnail image. The filename embeds its <code> directory; resolve and verify the
+// result stays inside the cache dir (guards against path traversal).
+router.get('/:id/thumbnails/:filename', (req, res) => {
+  const { filename } = req.params;
+  if (!/^[^/\\]+-\d{3}\.jpeg$/.test(filename)) {
     return res.status(400).json({ error: 'Invalid thumbnail' });
   }
-  const filePath = path.join(getThumbnailDir(fileId), filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Thumbnail not found' });
-  res.type('image/jpeg').sendFile(filePath);
+  const dirName = filename.replace(/-\d{3}\.jpeg$/, '');
+  const base = path.resolve(config.thumbnailCacheDir);
+  const filePath = path.resolve(base, dirName, filename);
+  // Reject anything that resolves outside the cache dir (path-traversal guard)
+  if (!filePath.startsWith(base + path.sep)) {
+    return res.status(400).json({ error: 'Invalid thumbnail' });
+  }
+  res.type('image/jpeg').sendFile(filePath, (err) => {
+    if (err && !res.headersSent) res.status(404).json({ error: 'Thumbnail not found' });
+  });
 });
 
 async function syncRelation(

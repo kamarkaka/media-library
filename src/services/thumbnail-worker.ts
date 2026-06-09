@@ -1,8 +1,7 @@
 import { parentPort } from 'worker_threads';
-import path from 'path';
 import knexInit from 'knex';
 import { config } from '../config';
-import { generateThumbnailsForFile } from './thumbnail-generator';
+import { generateThumbnailsForEntry } from './thumbnail-generator';
 import type { ScanProgress } from './scanner';
 
 const db = knexInit({
@@ -22,27 +21,30 @@ async function run(): Promise<void> {
     const countRow = await db('settings').where('key', 'thumbnail_count').first();
     const count = countRow ? parseInt(countRow.value, 10) || 10 : 10;
 
-    // One run per physical file — every file in the library gets `count` thumbnails
-    const files = await db('video_files').select('id', 'full_path', 'length');
-    console.log(`[thumbnail] Generating ${count} thumbnails for ${files.length} files`);
-    progress({ total: files.length });
+    // One run per coded entry — each of its files contributes `count` thumbnails (numbered per code)
+    const videos = await db('videos')
+      .whereNotNull('code').where('code', '!=', '')
+      .select('id', 'code');
+    console.log(`[thumbnail] Generating ${count} thumbnails per file for ${videos.length} coded entries`);
+    progress({ total: videos.length });
 
     let processed = 0;
     let updated = 0;
 
-    for (const file of files) {
-      progress({ currentFile: path.basename(file.full_path), step: 'Generating' });
+    for (const video of videos) {
+      progress({ currentFile: video.code, step: 'Generating' });
       try {
-        await generateThumbnailsForFile(file, count);
-        updated++;
+        const files = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc').select('full_path', 'length');
+        const n = await generateThumbnailsForEntry(video.code, files, count);
+        if (n > 0) updated++;
       } catch (err: any) {
-        console.error(`[thumbnail] failed for ${file.full_path}:`, err.message);
+        console.error(`[thumbnail] failed for ${video.code}:`, err.message);
       }
       processed++;
       progress({ processed, updated });
     }
 
-    console.log(`[thumbnail] Complete — ${updated} of ${processed} files`);
+    console.log(`[thumbnail] Complete — ${updated} of ${processed} entries`);
     progress({ status: 'done', step: '', currentFile: '', processed, updated });
   } catch (err: any) {
     console.error('[thumbnail] Fatal error:', err);

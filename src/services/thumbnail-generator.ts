@@ -3,31 +3,33 @@ import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
 
-// Snapshots are keyed by the stable video_files.id so they survive merges (a re-parented file
-// keeps its id). Layout: THUMBNAIL_CACHE_DIR/<fileId>/<seq>.jpeg. Filesystem is the source of
-// truth — no DB table, mirroring the HLS cache.
+// Snapshots are stored per code: THUMBNAIL_CACHE_DIR/<code>/<code>-<seq>.jpeg. For a multi-file
+// entry, every file contributes `countPerFile` frames, numbered continuously across the code's
+// files (file A → 001..N, file B → N+1..2N). Filesystem is the source of truth — no DB table.
 
 const THUMBNAIL_WIDTH = 480;
 const JPEG_QUALITY = 3;
 
 export interface ThumbInfo {
-  seq: number;
-  t: number;
   url: string;
 }
 
 export interface ThumbFile {
-  id: string;
   full_path: string;
   length: number | null;
 }
 
-export function getThumbnailDir(fileId: string): string {
-  return path.join(config.thumbnailCacheDir, fileId);
+// Match the cover-downloader sanitization so a code maps to a safe directory/filename.
+function sanitizeCode(code: string): string {
+  return code.replace(/[/\\:*?"<>|]/g, '_');
 }
 
-function thumbnailFilename(seq: number): string {
-  return `${String(seq).padStart(3, '0')}.jpeg`;
+function getThumbnailDir(code: string): string {
+  return path.join(config.thumbnailCacheDir, sanitizeCode(code));
+}
+
+function thumbnailFilename(code: string, seq: number): string {
+  return `${sanitizeCode(code)}-${String(seq).padStart(3, '0')}.jpeg`;
 }
 
 // Probe duration as a fallback when video_files.length is missing.
@@ -57,41 +59,45 @@ function extractFrame(fullPath: string, t: number, outPath: string): Promise<voi
   });
 }
 
-// List the thumbnails already on disk for one file, recomputing each timestamp from its position.
-export function listThumbnailsForFile(videoId: string, file: ThumbFile): ThumbInfo[] {
-  const dir = getThumbnailDir(file.id);
+// List an entry's thumbnails (read the code directory), sorted by sequence number.
+export function listThumbnailsForCode(videoId: string, code: string | null): ThumbInfo[] {
+  if (!code) return [];
+  const dir = getThumbnailDir(code);
   if (!fs.existsSync(dir)) return [];
-  const names = fs.readdirSync(dir).filter((f) => /^\d{3}\.jpeg$/.test(f)).sort();
-  const total = names.length;
-  const D = file.length || 0;
-  return names.map((name) => {
-    const seq = parseInt(name.slice(0, 3), 10);
-    return {
-      seq,
-      t: D > 0 ? (D * seq) / (total + 1) : 0,
-      url: `/api/videos/${videoId}/thumbnails/${file.id}/${name}`,
-    };
-  });
+  return fs.readdirSync(dir)
+    .map((name) => {
+      const m = /-(\d{3})\.jpeg$/.exec(name);
+      return m ? { seq: parseInt(m[1], 10), name } : null;
+    })
+    .filter((x): x is { seq: number; name: string } => x !== null)
+    .sort((a, b) => a.seq - b.seq)
+    .map((x) => ({ url: `/api/videos/${videoId}/thumbnails/${encodeURIComponent(x.name)}` }));
 }
 
-// Generate `count` evenly-spaced snapshots for one file (regenerate semantics — clears existing).
-export async function generateThumbnailsForFile(file: ThumbFile, count: number): Promise<number> {
-  let D = file.length;
-  if (!D || D <= 0) D = probeDuration(file.full_path);
-  if (!D || D <= 0) throw new Error('Unknown video duration');
+// Generate `countPerFile` evenly-spaced snapshots for EACH file of an entry, numbered continuously
+// under <code>/. Regenerate semantics — clears the code directory first. Requires a non-empty code.
+export async function generateThumbnailsForEntry(
+  code: string | null,
+  files: ThumbFile[],
+  countPerFile: number,
+): Promise<number> {
+  if (!code) throw new Error('Video has no code');
 
-  const dir = getThumbnailDir(file.id);
+  const dir = getThumbnailDir(code);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
 
-  // snapshot i (1-based) at t_i = D * i / (count + 1) — avoids the black first/last frames
-  for (let seq = 1; seq <= count; seq++) {
-    const t = (D * seq) / (count + 1);
-    await extractFrame(file.full_path, t, path.join(dir, thumbnailFilename(seq)));
+  let seq = 0;
+  for (const file of files) {
+    let D = file.length;
+    if (!D || D <= 0) D = probeDuration(file.full_path);
+    if (!D || D <= 0) continue; // skip files whose duration can't be determined
+    // snapshot i (1-based) at t_i = D * i / (countPerFile + 1) — avoids the black first/last frames
+    for (let i = 1; i <= countPerFile; i++) {
+      seq++;
+      const t = (D * i) / (countPerFile + 1);
+      await extractFrame(file.full_path, t, path.join(dir, thumbnailFilename(code, seq)));
+    }
   }
-  return count;
-}
-
-export function removeThumbnailsForFile(fileId: string): void {
-  fs.rmSync(getThumbnailDir(fileId), { recursive: true, force: true });
+  return seq;
 }
