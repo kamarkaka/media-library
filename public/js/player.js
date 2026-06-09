@@ -437,8 +437,8 @@
       html += '<div class="flex gap-2 overflow-x-auto pb-2 mb-2" style="scroll-snap-type: x mandatory;">';
       if (f.thumbnails && f.thumbnails.length) {
         f.thumbnails.forEach(function (th) {
-          html += '<img src="' + th.url + '" loading="lazy" data-file-id="' + f.id + '" data-t="' + th.t +
-            '" class="h-24 rounded cursor-pointer flex-shrink-0" style="scroll-snap-align: start;">';
+          html += '<img src="' + th.url +
+            '" loading="lazy" class="h-24 rounded cursor-pointer flex-shrink-0" style="scroll-snap-align: start;">';
         });
       } else {
         html += '<span class="text-xs text-gray-600 self-center">No thumbnails yet</span>';
@@ -448,18 +448,39 @@
     thumbCarousel.innerHTML = html;
   }
 
-  // Click a thumbnail → seek to its timestamp, switching to that file first if needed
+  // --- Thumbnail lightbox: click/tap a thumbnail to view it at full size ---
+  var lightbox = document.getElementById('thumb-lightbox');
+  var lightboxImg = document.getElementById('thumb-lightbox-img');
+
+  function openLightbox(src) {
+    if (!lightbox || !lightboxImg) return;
+    lightboxImg.src = src;
+    lightbox.classList.remove('hidden');
+    lightbox.classList.add('flex');
+  }
+
+  function closeLightbox() {
+    if (!lightbox) return;
+    lightbox.classList.add('hidden');
+    lightbox.classList.remove('flex');
+    lightboxImg.src = '';
+  }
+
   if (thumbCarousel) {
     thumbCarousel.addEventListener('click', function (e) {
-      var img = e.target.closest('img[data-file-id]');
+      var img = e.target.closest('img');
       if (!img) return;
-      var fileId = img.dataset.fileId;
-      var t = parseFloat(img.dataset.t) || 0;
-      if (fileId !== currentFileId) {
-        var f = files.filter(function (x) { return x.id === fileId; })[0];
-        if (f) { switchToFile(f, t, true); return; }
-      }
-      try { video.currentTime = t; } catch (err) {}
+      openLightbox(img.src);
+    });
+  }
+
+  if (lightbox) {
+    // Tap/click anywhere outside the image (or press Escape) closes the popup
+    lightbox.addEventListener('click', function (e) {
+      if (e.target !== lightboxImg) closeLightbox();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !lightbox.classList.contains('hidden')) closeLightbox();
     });
   }
 
@@ -483,7 +504,7 @@
           }
           var groups = result.data.files || [];
           renderThumbnails(groups);
-          // Keep the in-memory files' thumbnails in sync for click-to-seek after a switch
+          // Keep the in-memory files' thumbnails in sync so a later carousel re-render is correct
           groups.forEach(function (g) {
             var f = files.filter(function (x) { return x.id === g.id; })[0];
             if (f) f.thumbnails = g.thumbnails;

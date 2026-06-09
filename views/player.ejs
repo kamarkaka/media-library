@@ -234,5 +234,10 @@
     </div>
   </div>
 </div>
+
+<!-- Thumbnail lightbox (click a snapshot to view it full size; click outside to close) -->
+<div id="thumb-lightbox" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4" style="cursor: zoom-out;">
+  <img id="thumb-lightbox-img" src="" alt="" class="max-w-[95vw] max-h-[95vh] rounded shadow-2xl" style="cursor: auto;">
+</div>
 <script src="/js/player.js"></script>
 <%- include('partials/foot') %>
