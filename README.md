@@ -1,17 +1,25 @@
 # Media Library
 
-A self-hosted media management system for browsing, streaming, and managing a local video library through a web UI. Similar to Jellyfin or Plex, but simpler — no transcoding, no user accounts, just one owner.
+A self-hosted media management system for browsing, streaming, and managing a local video library through a web UI. Similar to Jellyfin or Plex, but lean and single-owner. Browser-native files (H.264 + AAC/MP3 in MP4/M4V) stream directly; anything else is transcoded to HLS on demand with FFmpeg.
 
 ## Features
 
-- **Video library** — scan configured directories, browse with cover images, search and filter by metadata
-- **Streaming** — HTTP range-request support for browser-native seeking without downloading
-- **Resume playback** — saves position automatically, resume from where you left off
-- **Prev/next navigation** — quickly move between videos
-- **Metadata support** — director, maker, label, genres, cast, release date, cover images (all optional)
-- **Pluggable scraper** — metadata fetching via a scraper interface; ships with NoOpScraper, bring your own Puppeteer-based scraper later
+- **Video library** — scan configured directories; browse with cover images; multi-select pill filters (genre, cast, director, maker, label, matched/unmatched) and search
+- **Streaming** — compatible files play directly via HTTP range requests; everything else is transcoded to HLS on demand (360p/720p/1080p + original)
+- **Custom player** — quality selector, file selector, fullscreen (incl. iOS), keyboard shortcuts, swipe-to-seek, click-to-play cover, and a thumbnail carousel
+- **Multiple files per entry** — videos that share a code are merged into one entry; choose which file to play from the player
+- **Thumbnail snapshots** — generate evenly-spaced preview frames per file with FFmpeg; click one for a full-size lightbox
+- **Resume playback** — saves position automatically, resume from where you left off; prev/next navigation between videos
+- **Metadata** — director, maker, label, genres, cast, release date, cover images (all optional); fields you edit by hand are never overwritten by scraping
+- **Pluggable scrapers** — five bundled Puppeteer scrapers (javtrailers default, 123av, javxx, missav, javfilms) plus a NoOp fallback; metadata can be sourced per-field from different scrapers
 - **Authentication** — session-based login to protect against unauthorized remote access
 - **Docker deployment** — single image, single port, SQLite database
+
+## Requirements
+
+- **Node.js** 20+
+- **FFmpeg** (`ffmpeg` + `ffprobe`) on `PATH` — required for media probing during scan, HLS transcoding, and thumbnail generation
+- **Chromium** — only needed if you use the Puppeteer-based scrapers; point `CHROMIUM_PATH` at the binary (the Docker image bundles it)
 
 ## Quick Start
 
@@ -56,6 +64,8 @@ Then add `/media` as a library path in the Settings page.
 | Database  | SQLite (better-sqlite3 + Knex) |
 | Styling   | Tailwind CSS (CDN)            |
 | Client JS | Vanilla JavaScript            |
+| Media     | FFmpeg (ffprobe + ffmpeg) — probing, HLS transcoding, thumbnails |
+| Scraping  | Puppeteer (puppeteer-core + Chromium) |
 
 ## Project Structure
 
@@ -67,7 +77,7 @@ src/
 ├── cli.ts                  # setup-auth, hash-password
 ├── middleware/auth.ts       # Session auth
 ├── routes/                 # Page routes + API routes
-├── services/               # Scanner, query helpers
+├── services/               # Scan/scrape/merge/thumbnail workers, HLS transcoder, query helpers
 └── scrapers/               # Pluggable scraper interface
 views/                      # EJS templates
 public/                     # CSS + client JS
@@ -101,6 +111,8 @@ When the user clicks "Scrape Metadata" in Settings, the system:
 
 1. **Resolves source URLs** — For each video, the resolver derives a search code from the filename, searches a site, and finds the video's detail page URL.
 2. **Scrapes metadata** — The scraper navigates to the resolved URL using Puppeteer, extracts metadata (name, code, release date, director, genres, cast, cover image, etc.), and writes it to the database.
+
+Metadata can be sourced **per field from different scrapers** (configured in Settings → Advanced Options), and same-code entries are merged into one after a scrape. Any field you edit by hand is recorded as `manual` and is never overwritten by a later scrape.
 
 ### Adding a New Scraper
 
@@ -274,6 +286,14 @@ All fields are optional — return only what you can extract:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
-| `DB_PATH` | `./data/library.db` | SQLite database path |
-| `SCRAPER_TYPE` | `dvd` | Default scraper (`noop` = no metadata) |
+| `DB_PATH` | `data/library.db` | SQLite database path |
+| `SCRAPER_TYPE` | `javtrailers` | Default scraper (`noop` = no metadata fetching) |
+| `FFMPEG_PATH` | `ffmpeg` | Path to the `ffmpeg` binary |
+| `HLS_CACHE_DIR` | `data/hls-cache` | Where transcoded HLS segments are cached |
+| `COVER_CACHE_DIR` | `data/covers` | Where downloaded cover images are stored |
+| `THUMBNAIL_CACHE_DIR` | `/data/thumbnail` | Where generated thumbnails are stored (absolute path) |
 | `CHROMIUM_PATH` | `/usr/bin/chromium-browser` | Path to Chromium binary (for scrapers) |
+| `VALIDATOR_ENABLED` | `true` | Run the daily scraper-validation cron (`false` to disable) |
+| `VALIDATOR_CRON` | `0 8 * * *` | Cron schedule for scraper validation |
+
+Most data paths default to module-relative `data/…` (resolved next to the compiled code), so set them explicitly in Docker if you want them on a mounted volume. `THUMBNAIL_CACHE_DIR` is the exception — it defaults to the absolute `/data/thumbnail`; override it for local development if `/data` isn't writable.
