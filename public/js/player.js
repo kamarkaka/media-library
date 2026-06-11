@@ -193,6 +193,7 @@
 
   // Time + progress update
   video.addEventListener('timeupdate', function () {
+    if (scrubbing) return; // while dragging, the handle follows the finger, not the playhead
     var d = getDuration();
     if (!d) return;
     var pct = (video.currentTime / d) * 100;
@@ -208,35 +209,110 @@
     seekBuffer.style.width = (end / video.duration * 100) + '%';
   });
 
-  // Seek bar drag (handle only, not bar click)
-  var seeking = false;
+  // Seek bar: scrub the position WITHOUT interrupting playback; seek once on release; show a live
+  // preview frame (generated on the fly) at the dragged position.
+  var scrubbing = false;
+  var scrubPct = 0;
+  var scrubBarRect = null;
+  var scrubContRect = null;
+  var lastFrameT = -1;
+  var seekPreview = document.getElementById('seek-preview');
+  var seekPreviewImg = document.getElementById('seek-preview-img');
+  var seekPreviewTime = document.getElementById('seek-preview-time');
+  var previewThrottle = null;
+  // Keep in sync with FRAME_STEP in src/services/frame-extractor.ts so rounded-t URLs hit the cache
+  var PREVIEW_FRAME_STEP = 5; // seconds — snap preview frames to a 5s grid (e.g. 14:12 -> 14:10)
 
-  function seekTo(e) {
-    var d = getDuration();
-    if (!d) return;
-    var rect = seekBar.getBoundingClientRect();
-    var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    video.currentTime = pct * d;
+  if (seekPreviewImg) {
+    seekPreviewImg.addEventListener('load', function () { seekPreviewImg.style.visibility = 'visible'; });
+    seekPreviewImg.addEventListener('error', function () { seekPreviewImg.style.visibility = 'hidden'; });
   }
 
-  if (seekHandle) {
-    seekHandle.addEventListener('mousedown', function (e) {
-      e.preventDefault();
-      seeking = true;
-    });
-    document.addEventListener('mousemove', function (e) {
-      if (seeking) seekTo(e);
-    });
-    document.addEventListener('mouseup', function () { if (seeking) { seeking = false; showControls(); } });
+  function pctFromClientX(clientX) {
+    var rect = scrubBarRect || seekBar.getBoundingClientRect();
+    if (!rect.width) return 0;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }
 
-    seekHandle.addEventListener('touchstart', function (e) {
+  function renderScrubUI(pct) {
+    var d = getDuration();
+    seekProgress.style.width = (pct * 100) + '%';
+    seekHandle.style.left = 'calc(' + (pct * 100) + '% - 6px)';
+    if (d) timeDisplay.textContent = formatTime(pct * d) + ' / ' + formatTime(d);
+  }
+
+  function updatePreview(clientX, pct) {
+    if (!seekPreview) return;
+    var d = getDuration();
+    if (!d) return;
+    var contRect = scrubContRect || container.getBoundingClientRect();
+    var x = clientX - contRect.left;
+    seekPreview.style.left = Math.max(84, Math.min(contRect.width - 84, x)) + 'px';
+    seekPreview.classList.remove('hidden');
+    if (seekPreviewTime) seekPreviewTime.textContent = formatTime(pct * d);
+    // Throttle the on-the-fly frame request; assigning img.src cancels the previous load, and the
+    // rounded-t URL is stable so re-scrubbing the same spot is served from the browser cache.
+    if (!previewThrottle) {
+      previewThrottle = setTimeout(function () {
+        previewThrottle = null;
+        if (!scrubbing || !seekPreviewImg) return;
+        var t = Math.round(scrubPct * getDuration() / PREVIEW_FRAME_STEP) * PREVIEW_FRAME_STEP;
+        if (t === lastFrameT) return; // same rounded position — skip the redundant reload
+        lastFrameT = t;
+        var fileParam = currentFileId ? ('&file=' + encodeURIComponent(currentFileId)) : '';
+        seekPreviewImg.src = '/api/videos/' + videoId + '/frame?t=' + t + fileParam;
+      }, 150);
+    }
+  }
+
+  function startScrub(clientX) {
+    if (!getDuration()) return;
+    scrubbing = true;
+    lastFrameT = -1;
+    // Cache layout rects for the drag so per-move handlers don't force a reflow
+    scrubBarRect = seekBar.getBoundingClientRect();
+    scrubContRect = container.getBoundingClientRect();
+    scrubPct = pctFromClientX(clientX);
+    renderScrubUI(scrubPct);
+    updatePreview(clientX, scrubPct);
+    showControls(); // keep controls visible (hideControls also no-ops while scrubbing)
+  }
+
+  function moveScrub(clientX) {
+    if (!scrubbing) return;
+    scrubPct = pctFromClientX(clientX);
+    renderScrubUI(scrubPct);
+    updatePreview(clientX, scrubPct);
+  }
+
+  function endScrub() {
+    if (!scrubbing) return;
+    scrubbing = false;
+    scrubBarRect = null;
+    scrubContRect = null;
+    lastFrameT = -1;
+    var d = getDuration();
+    if (d) video.currentTime = scrubPct * d; // single seek on release; playback continues from here
+    if (seekPreview) seekPreview.classList.add('hidden');
+    if (seekPreviewImg) seekPreviewImg.removeAttribute('src');
+    showControls();
+  }
+
+  if (seekBar) {
+    // Mouse — start a scrub anywhere on the bar (the handle lives inside it)
+    seekBar.addEventListener('mousedown', function (e) { e.preventDefault(); startScrub(e.clientX); });
+    document.addEventListener('mousemove', function (e) { if (scrubbing) moveScrub(e.clientX); });
+    document.addEventListener('mouseup', endScrub);
+
+    // Touch — non-passive move so we can preventDefault the page scroll while dragging
+    seekBar.addEventListener('touchstart', function (e) {
       e.stopPropagation();
-      seeking = true;
+      startScrub(e.touches[0].clientX);
     }, { passive: true });
     document.addEventListener('touchmove', function (e) {
-      if (seeking) seekTo(e.touches[0]);
-    });
-    document.addEventListener('touchend', function () { if (seeking) { seeking = false; showControls(); } });
+      if (scrubbing) { e.preventDefault(); moveScrub(e.touches[0].clientX); }
+    }, { passive: false });
+    document.addEventListener('touchend', endScrub);
   }
 
   // Fullscreen — iOS Safari only supports webkitEnterFullscreen on <video>, and requires playback
@@ -327,7 +403,7 @@
   }
 
   function hideControls() {
-    if (!video.paused && !seeking) {
+    if (!video.paused && !scrubbing) {
       controls.style.opacity = '0';
       controlsVisible = false;
     }

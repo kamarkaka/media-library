@@ -36,6 +36,12 @@
       <div id="quality-menu" class="absolute top-full right-0 mt-1 bg-gray-900/95 border border-gray-700 rounded shadow-lg hidden min-w-[100px]"></div>
     </div>
 
+    <!-- Seek scrub preview (live frame at the dragged position) -->
+    <div id="seek-preview" class="absolute bottom-16 z-20 hidden pointer-events-none -translate-x-1/2" style="left: 0;">
+      <img id="seek-preview-img" class="w-40 rounded border border-white/20 bg-black shadow-lg" alt="">
+      <div id="seek-preview-time" class="text-center text-xs text-white/90 mt-0.5 tabular-nums"></div>
+    </div>
+
     <!-- Bottom Controls -->
     <div id="player-controls" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8 z-10 opacity-0 transition-opacity duration-300 select-none" style="max-width: 960px; margin: 0 auto; left: 0; right: 0;">
       <div class="flex items-center gap-3">

@@ -12,6 +12,7 @@ import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 import { config } from '../../config';
 import { downloadCover } from '../../services/cover-downloader';
 import { listThumbnailsForCode, generateThumbnailsForEntry } from '../../services/thumbnail-generator';
+import { getFrame } from '../../services/frame-extractor';
 
 const router = Router();
 
@@ -99,6 +100,27 @@ router.get('/:id/cover', async (req, res) => {
   stream.on('error', () => res.status(404).json({ error: 'Cover image not found' }));
   res.type(mimeType);
   stream.pipe(res);
+});
+
+// Live single-frame preview for seek-bar scrubbing (?file=<id>&t=<seconds>). Extracted on the fly.
+router.get('/:id/frame', async (req, res) => {
+  const video: any = await db('videos').where('id', req.params.id).first();
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  const file = await resolveFile(video, req.query.file);
+  const t = Math.max(0, parseFloat(String(req.query.t)) || 0);
+
+  const ac = new AbortController();
+  req.on('close', () => ac.abort());
+
+  try {
+    const buf = await getFrame(file.fullPath, file.fileKey, t, ac.signal);
+    if (ac.signal.aborted) return;
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.type('image/jpeg').send(buf);
+  } catch {
+    if (!ac.signal.aborted && !res.headersSent) res.status(404).json({ error: 'Frame not available' });
+  }
 });
 
 // Generate `thumbnail_count` snapshots per file for this entry, numbered continuously under <code>/
