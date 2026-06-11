@@ -695,6 +695,36 @@
       });
   }
 
+  // --- Remove a video whose file(s) are missing ---
+  var removeBtn = document.getElementById('remove-video-btn');
+  if (removeBtn) {
+    var removeStatus = document.getElementById('remove-video-status');
+    removeBtn.addEventListener('click', function () {
+      if (!confirm('Remove this video from the library? This deletes the entry and its thumbnails, cover, and cached data. This cannot be undone.')) return;
+      removeBtn.disabled = true;
+      removeStatus.textContent = 'Removing…';
+      removeStatus.className = 'text-xs text-gray-400 ml-2';
+      fetch('/api/videos/' + videoId, { method: 'DELETE' })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (result.ok) {
+            removeStatus.textContent = 'Removed — redirecting…';
+            removeStatus.className = 'text-xs text-green-400 ml-2';
+            setTimeout(function () { window.location.href = '/'; }, 600);
+          } else {
+            removeStatus.textContent = (result.data && result.data.error) || 'Failed';
+            removeStatus.className = 'text-xs text-red-400 ml-2';
+            removeBtn.disabled = false;
+          }
+        })
+        .catch(function (err) {
+          removeStatus.textContent = 'Failed: ' + err.message;
+          removeStatus.className = 'text-xs text-red-400 ml-2';
+          removeBtn.disabled = false;
+        });
+    });
+  }
+
   // --- Playback logging ---
 
   // Log: start or resume

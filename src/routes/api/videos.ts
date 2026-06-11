@@ -13,8 +13,9 @@ import path from 'path';
 import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 import { config } from '../../config';
 import { downloadCover } from '../../services/cover-downloader';
-import { listThumbnailsForCode, generateThumbnailsForEntry } from '../../services/thumbnail-generator';
+import { listThumbnailsForCode, generateThumbnailsForEntry, deleteThumbnailsForCode } from '../../services/thumbnail-generator';
 import { getFrame } from '../../services/frame-extractor';
+import { snapshotPath } from './moments';
 
 const router = Router();
 
@@ -300,6 +301,53 @@ router.put('/:id', async (req, res) => {
     console.error('[api] Failed to update video:', err);
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
+});
+
+// Delete a video entry entirely, including its generated artifacts. DB child rows cascade via FK
+// (video_files/genres/cast/playback_state/field_sources/favorite_moments); coverage_results has no
+// FK so it is removed explicitly. Filesystem cleanup is best-effort. The source media file on disk
+// is never touched. Thumbnails and the cover are keyed by code (shared across same-code entries), so
+// they are only removed when no other entry still uses the code.
+// This is a general delete primitive; the "only removable when a file is missing" policy is enforced
+// by the caller (the player UI shows the Remove button only for entries with a missing file).
+router.delete('/:id', async (req, res) => {
+  const id = req.params.id;
+  const video: any = await db('videos').where('id', id).first();
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  // Capture artifact keys before the row (and its cascaded children) are gone.
+  const code: string | null = video.code;
+  const coverImage: string | null = video.cover_image;
+  const momentIds = (await db('favorite_moments').where('video_id', id).select('id')).map((m: any) => m.id);
+
+  try {
+    await db.transaction(async (trx) => {
+      await trx('coverage_results').where('video_id', id).del();
+      await trx('videos').where('id', id).del();
+    });
+  } catch (err: any) {
+    console.error('[api] Failed to delete video:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+
+  // Best-effort artifact cleanup — a failure here must not fail the (already committed) delete.
+  try {
+    cleanupCache(id); // HLS cache is keyed by video id, so it is always safe to remove
+    for (const mid of momentIds) fs.rmSync(snapshotPath(mid), { force: true });
+    if (code) {
+      const sibling = await db('videos').where('code', code).first();
+      if (!sibling) {
+        deleteThumbnailsForCode(code);
+        if (coverImage && !coverImage.startsWith('http') && fs.existsSync(coverImage)) {
+          fs.unlinkSync(coverImage);
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[api] delete ${id}: artifact cleanup failed:`, err.message);
+  }
+
+  res.json({ success: true });
 });
 
 // Add/remove genre or cast for a video

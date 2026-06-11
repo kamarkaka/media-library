@@ -75,6 +75,13 @@ export function listThumbnailsForCode(videoId: string, code: string | null): Thu
     .map((x) => ({ url: `/api/videos/${videoId}/thumbnails/${encodeURIComponent(x.name)}` }));
 }
 
+// Remove every thumbnail for a code (its whole <code>/ directory). Best-effort; no-op without a code.
+// Caller must ensure no other entry still shares the code (thumbnails are keyed by code, not video id).
+export function deleteThumbnailsForCode(code: string | null): void {
+  if (!code) return;
+  fs.rmSync(getThumbnailDir(code), { recursive: true, force: true });
+}
+
 // Generate `countPerFile` evenly-spaced snapshots for EACH file of an entry, numbered continuously
 // under <code>/. Regenerate semantics — clears the code directory first. Requires a non-empty code.
 export async function generateThumbnailsForEntry(
@@ -85,7 +92,7 @@ export async function generateThumbnailsForEntry(
   if (!code) throw new Error('Video has no code');
 
   const dir = getThumbnailDir(code);
-  fs.rmSync(dir, { recursive: true, force: true });
+  deleteThumbnailsForCode(code); // clear any previous thumbnails for this code before regenerating
   fs.mkdirSync(dir, { recursive: true });
 
   let seq = 0;

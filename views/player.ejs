@@ -266,6 +266,13 @@
         </div>
         <span id="fix-file-status" class="text-xs text-gray-400 mt-1 block"></span>
       </div>
+      <% if ((files || []).some(function (f) { return f.missing; })) { %>
+      <!-- Remove a video whose file(s) are missing: deletes the entry and its generated artifacts -->
+      <div class="sm:col-span-2 md:col-span-4 mt-3 pt-3 border-t border-gray-700/50">
+        <button type="button" id="remove-video-btn" class="bg-red-600/90 hover:bg-red-600 text-white text-xs px-3 py-1 rounded transition-colors">Remove video</button>
+        <span id="remove-video-status" class="text-xs text-gray-400 ml-2"></span>
+      </div>
+      <% } %>
     </div>
   </div>
 </div>

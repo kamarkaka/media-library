@@ -9,7 +9,8 @@ import { resolveFile } from '../../services/video-queries';
 
 const router = Router();
 
-function snapshotPath(id: string): string {
+// Path to a moment's on-disk snapshot (keyed by moment id). Exported so a video delete can clean up.
+export function snapshotPath(id: string): string {
   return path.join(config.momentCacheDir, `${id}.jpeg`);
 }
 

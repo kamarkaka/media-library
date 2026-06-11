@@ -4,8 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import knexInit from 'knex';
 import { config } from '../config';
-import { cleanupCache } from './hls-transcoder';
-import { pickDefaultFile, setDefaultFile, applyFileMetadata } from './merge-helpers';
+import { applyFileMetadata } from './merge-helpers';
 import { getVideoInfo, videoInfoColumns, type VideoInfo } from './video-probe';
 import type { ScanProgress } from './scanner';
 
@@ -148,39 +147,12 @@ async function run(): Promise<void> {
       progress({ processed, added, updated });
     }
 
-    let removed = 0;
+    // We intentionally NEVER delete unlinked records. A video_files row whose file has vanished from
+    // disk is kept (along with its videos entry) so the entry surfaces in the Settings "missing files"
+    // list, where the user can relink the path or remove the video deliberately.
+    const removed = 0;
     if (staleFiles.length > 0) {
-      progress({ step: 'Removing stale files' });
-      console.log(`[scan] Removing ${staleFiles.length} stale files`);
-      const staleFileIds = staleFiles.map((f: any) => f.file_id);
-      await db('video_files').whereIn('id', staleFileIds).del();
-      removed = staleFiles.length;
-
-      // Delete videos entries that now have zero files (cascades genres/cast/playback/field_sources)
-      const affectedVideoIds = [...new Set(staleFiles.map((f: any) => f.video_id))];
-      const emptyVideoIds = (await db('videos')
-        .whereIn('videos.id', affectedVideoIds)
-        .whereNotExists(function () {
-          this.select(db.raw(1)).from('video_files').whereRaw('video_files.video_id = videos.id');
-        })
-        .select('id')).map((v: any) => v.id);
-      for (const vid of emptyVideoIds) cleanupCache(vid);
-      if (emptyVideoIds.length > 0) {
-        await db('videos').whereIn('id', emptyVideoIds).del();
-      }
-
-      // Repair entries that lost their default file but still have other files
-      const survivors = affectedVideoIds.filter((id) => !emptyVideoIds.includes(id));
-      for (const vid of survivors) {
-        const v = await db('videos').where('id', vid).first();
-        const stillExists = v.default_file_id
-          ? await db('video_files').where('id', v.default_file_id).first()
-          : null;
-        if (!stillExists) {
-          const replacement = await pickDefaultFile(db, vid);
-          if (replacement) await setDefaultFile(db, vid, replacement);
-        }
-      }
+      console.log(`[scan] ${staleFiles.length} file(s) no longer on disk — kept as unlinked (not removed)`);
     }
 
     console.log(`[scan] Complete — added ${added}, updated ${updated}, removed ${removed}`);
