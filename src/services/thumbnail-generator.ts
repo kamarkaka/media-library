@@ -45,7 +45,8 @@ function probeDuration(fullPath: string): number | null {
   }
 }
 
-function extractFrame(fullPath: string, t: number, outPath: string): Promise<void> {
+// Extract a single JPEG frame at time `t` to `outPath` (shared with the favorite-moments snapshots).
+export function extractFrame(fullPath: string, t: number, outPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // -ss before -i = fast input seek; one frame per call gives an exact count and reliable spacing
     const args = [

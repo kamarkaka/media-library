@@ -192,6 +192,24 @@ export async function getVideoNeighbors(video: { release_date: string | null; id
   return { prev: prevVideo || null, next: nextVideo || null };
 }
 
+// Resolve which physical file a request targets. fileSel (a video_files id) selects a specific file;
+// absent => the entry's default file. The path always comes from the DB, never a client string.
+// Shared by the streaming endpoints (videos.ts) and the favorite-moment snapshots (moments.ts).
+export async function resolveFile(video: any, fileSel: any): Promise<{
+  fileKey: string; fullPath: string; videoCodec: string | null; audioCodec: string | null; height: number | null;
+}> {
+  if (fileSel) {
+    const f = await db('video_files').where({ id: String(fileSel), video_id: video.id }).first();
+    if (f) return { fileKey: f.id, fullPath: f.full_path, videoCodec: f.video_codec, audioCodec: f.audio_codec, height: f.height };
+  }
+  const def = video.default_file_id
+    ? await db('video_files').where('id', video.default_file_id).first()
+    : await db('video_files').where({ video_id: video.id, is_default: 1 }).first();
+  if (def) return { fileKey: def.id, fullPath: def.full_path, videoCodec: def.video_codec, audioCodec: def.audio_codec, height: def.height };
+  // Legacy fallback (no video_files rows yet): use the videos-row mirror
+  return { fileKey: 'default', fullPath: video.full_path, videoCodec: video.video_codec, audioCodec: video.audio_codec, height: video.height };
+}
+
 export async function getFilterOptions() {
   const [genres, directors, makers, labels, castMembers] = await Promise.all([
     db('genres')

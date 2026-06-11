@@ -63,6 +63,10 @@ router.get('/:id', async (req, res) => {
   const fieldSources: Record<string, string> = {};
   for (const row of fieldSourceRows) fieldSources[row.field] = row.source;
 
+  // Deep link from a favorite moment: start at ?t= (seconds), optionally on a specific ?file=
+  const startAt = parseFloat(req.query.t as string) || 0;
+  const startFile = (req.query.file as string) || '';
+
   res.render('player', {
     title: video.filename,
     video,
@@ -75,6 +79,8 @@ router.get('/:id', async (req, res) => {
     canDirectPlay,
     files,
     thumbnails,
+    startAt,
+    startFile,
     scrapers: listScrapers(),
     fieldSources,
   });

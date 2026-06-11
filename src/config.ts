@@ -16,6 +16,7 @@ export interface AppConfig {
   ffmpegPath: string;
   coverCacheDir: string;
   thumbnailCacheDir: string;
+  momentCacheDir: string;
 }
 
 export const config: AppConfig = {
@@ -31,4 +32,5 @@ export const config: AppConfig = {
   ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
   coverCacheDir: process.env.COVER_CACHE_DIR || path.join(__dirname, '../data/covers'),
   thumbnailCacheDir: process.env.THUMBNAIL_CACHE_DIR || '/data/thumbnail',
+  momentCacheDir: process.env.MOMENT_CACHE_DIR || '/data/moments',
 };

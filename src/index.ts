@@ -13,6 +13,7 @@ import libraryRouter from './routes/library';
 import playerRouter from './routes/player';
 import settingsRouter from './routes/settings';
 import tagsRouter from './routes/tags';
+import momentsRouter from './routes/moments';
 import apiRouter from './routes/api';
 import { startValidatorScheduler } from './services/validator-scheduler';
 
@@ -88,6 +89,7 @@ async function main() {
   app.use(libraryRouter);
   app.use('/player', playerRouter);
   app.use('/settings', settingsRouter);
+  app.use('/moments', momentsRouter);
   app.use(tagsRouter);
   app.use('/api', apiRouter);
 

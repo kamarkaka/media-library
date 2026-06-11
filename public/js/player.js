@@ -5,6 +5,10 @@
 
   var videoId = container.dataset.videoId;
   var resumePosition = parseFloat(container.dataset.resumePosition) || 0;
+  var startAt = parseFloat(container.dataset.startAt) || 0;
+  var startFile = container.dataset.startFile || '';
+  // Deep link from a favorite moment: start at the bookmarked time instead of the saved resume point
+  if (startAt > 0) resumePosition = startAt;
   var seekStep = parseInt(container.dataset.seekStep, 10) || 10;
   var directPlay = container.dataset.directPlay === '1';
   var streamUrl = container.dataset.streamUrl;
@@ -65,8 +69,12 @@
     });
   }
 
-  // Initial source: the default (alphabetically-first) file, else the container's single-file URLs
+  // Initial source: a deep-linked file (?file=) wins, else the default (alphabetically-first) file
   var initialFile = files.length ? (files.filter(function (f) { return f.isDefault; })[0] || files[0]) : null;
+  if (startFile) {
+    var requested = files.filter(function (f) { return f.id === startFile; })[0];
+    if (requested) initialFile = requested;
+  }
   loadSource(initialFile);
 
   // Wait until the video is actually playable before seeking to resume position
@@ -591,6 +599,37 @@
           genThumbsBtn.classList.remove('opacity-50');
           if (genThumbsBtn.textContent === 'Generating…') genThumbsBtn.textContent = 'Generate';
         });
+    });
+  }
+
+  // --- Save favorite moment ---
+  var saveMomentBtn = document.getElementById('save-moment-btn');
+  var saveMomentStatus = document.getElementById('save-moment-status');
+  if (saveMomentBtn) {
+    saveMomentBtn.addEventListener('click', function () {
+      saveMomentBtn.disabled = true;
+      saveMomentStatus.textContent = 'Saving…';
+      saveMomentStatus.className = 'text-xs text-gray-400';
+      fetch('/api/moments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId: videoId, fileId: currentFileId, timestamp: video.currentTime }),
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (result.ok) {
+            saveMomentStatus.innerHTML = 'Saved · <a href="/moments" class="text-blue-400 hover:text-blue-300 underline">view</a>';
+            saveMomentStatus.className = 'text-xs text-green-400';
+          } else {
+            saveMomentStatus.textContent = (result.data && result.data.error) || 'Failed';
+            saveMomentStatus.className = 'text-xs text-red-400';
+          }
+        })
+        .catch(function (err) {
+          saveMomentStatus.textContent = 'Failed: ' + err.message;
+          saveMomentStatus.className = 'text-xs text-red-400';
+        })
+        .finally(function () { saveMomentBtn.disabled = false; });
     });
   }
 

@@ -172,6 +172,17 @@ export async function initDatabase(): Promise<void> {
     });
   }
 
+  // Favorite moments: a bookmark of one video at one timestamp (within a specific file)
+  if (!(await db.schema.hasTable('favorite_moments'))) {
+    await db.schema.createTable('favorite_moments', (t) => {
+      t.text('id').primary();
+      t.text('video_id').notNullable().references('id').inTable('videos').onDelete('CASCADE');
+      t.text('file_id').nullable().references('id').inTable('video_files').onDelete('CASCADE');
+      t.float('timestamp').notNullable();
+      t.timestamp('created_at').defaultTo(db.fn.now());
+    });
+  }
+
   // Add columns for existing databases
   const cols = await db.raw("PRAGMA table_info('videos')");
   const colNames = new Set(cols.map((c: any) => c.name));
@@ -208,6 +219,7 @@ export async function initDatabase(): Promise<void> {
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_label ON videos(label)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_playback_last_viewed ON playback_state(last_viewed DESC)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_video_files_video_id ON video_files(video_id)');
+  await db.raw('CREATE INDEX IF NOT EXISTS idx_favorite_moments_video ON favorite_moments(video_id)');
 
   // Backfill: ensure every videos row has a corresponding video_files row + default pointer.
   // Idempotent — only touches videos that have no video_files rows yet, so it is a no-op on later boots.

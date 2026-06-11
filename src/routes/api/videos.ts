@@ -2,7 +2,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import mime from 'mime-types';
 import db, { getIntSetting } from '../../db';
-import { queryVideos, getPlaybackMap, getVideoNeighbors, parseVideoFilters } from '../../services/video-queries';
+import { queryVideos, getPlaybackMap, getVideoNeighbors, parseVideoFilters, resolveFile } from '../../services/video-queries';
 import {
   generateMasterPlaylist, isTranscoded, isTranscoding,
   getPlaylistContent, getSegmentPath, startTranscoding,
@@ -15,23 +15,6 @@ import { listThumbnailsForCode, generateThumbnailsForEntry } from '../../service
 import { getFrame } from '../../services/frame-extractor';
 
 const router = Router();
-
-// Resolve which physical file to serve. ?file=<id> selects a specific file; absent => the
-// entry's default file. The served path always comes from the DB row, never the client string.
-async function resolveFile(video: any, fileSel: any): Promise<{
-  fileKey: string; fullPath: string; videoCodec: string | null; audioCodec: string | null; height: number | null;
-}> {
-  if (fileSel) {
-    const f = await db('video_files').where({ id: String(fileSel), video_id: video.id }).first();
-    if (f) return { fileKey: f.id, fullPath: f.full_path, videoCodec: f.video_codec, audioCodec: f.audio_codec, height: f.height };
-  }
-  const def = video.default_file_id
-    ? await db('video_files').where('id', video.default_file_id).first()
-    : await db('video_files').where({ video_id: video.id, is_default: 1 }).first();
-  if (def) return { fileKey: def.id, fullPath: def.full_path, videoCodec: def.video_codec, audioCodec: def.audio_codec, height: def.height };
-  // Legacy fallback (no video_files rows yet): use the videos-row mirror
-  return { fileKey: 'default', fullPath: video.full_path, videoCodec: video.video_codec, audioCodec: video.audio_codec, height: video.height };
-}
 
 // Paginated video list (JSON, for infinite scroll)
 router.get('/', async (req, res) => {
