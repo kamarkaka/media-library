@@ -5,8 +5,10 @@ import db, { getIntSetting } from '../../db';
 import { queryVideos, getPlaybackMap, getVideoNeighbors, parseVideoFilters, resolveFile } from '../../services/video-queries';
 import {
   generateMasterPlaylist, isTranscoded, isTranscoding,
-  getPlaylistContent, getSegmentPath, startTranscoding,
+  getPlaylistContent, getSegmentPath, startTranscoding, cleanupCache,
 } from '../../services/hls-transcoder';
+import { getVideoInfo, videoInfoColumns } from '../../services/video-probe';
+import { applyFileMetadata } from '../../services/merge-helpers';
 import path from 'path';
 import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 import { config } from '../../config';
@@ -83,6 +85,52 @@ router.get('/:id/cover', async (req, res) => {
   stream.on('error', () => res.status(404).json({ error: 'Cover image not found' }));
   res.type(mimeType);
   stream.pipe(res);
+});
+
+// Relink a moved/missing file to a corrected path: validate it, re-probe metadata, refresh thumbnails
+router.put('/:id/files/:fileId/path', async (req, res) => {
+  const input = (req.body.path || '').trim();
+  if (!input) return res.status(400).json({ error: 'path is required' });
+
+  const video: any = await db('videos').where('id', req.params.id).first();
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+  const file = await db('video_files').where({ id: req.params.fileId, video_id: req.params.id }).first();
+  if (!file) return res.status(404).json({ error: 'File not found' });
+
+  // The new path must exist, be a file, and live inside a configured library directory
+  // (otherwise the next scan would treat it as stale and remove it).
+  const resolved = path.resolve(input);
+  let stat;
+  try { stat = fs.statSync(resolved); } catch { return res.status(400).json({ error: 'Path does not exist' }); }
+  if (!stat.isFile()) return res.status(400).json({ error: 'Path is not a file' });
+
+  const libPaths = (await db('library_paths').select('path')).map((r: any) => path.resolve(r.path));
+  const inLibrary = libPaths.some((lp) => resolved === lp || resolved.startsWith(lp + path.sep));
+  if (!inLibrary) return res.status(400).json({ error: 'Path must be inside a configured library directory' });
+
+  // full_path is UNIQUE — reject if another file already points there
+  const clash = await db('video_files').where('full_path', resolved).whereNot('id', file.id).first();
+  if (clash) return res.status(409).json({ error: 'Another video file already uses that path' });
+
+  // Re-probe technical metadata and relink the file (mirrored onto videos if it's the default file)
+  const cols = videoInfoColumns(getVideoInfo(resolved));
+  const filename = path.basename(resolved);
+  const isDefault = video.default_file_id === file.id || !!file.is_default;
+  await applyFileMetadata(db, file.id, video.id, isDefault, { full_path: resolved, filename, ...cols });
+
+  // The old transcode is stale; drop it and refresh the entry's thumbnails (best-effort)
+  cleanupCache(video.id);
+  try {
+    if (video.code) {
+      const count = await getIntSetting(db, 'thumbnail_count', 10);
+      const fileRows = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc').select('full_path', 'length');
+      await generateThumbnailsForEntry(video.code, fileRows, count);
+    }
+  } catch (err: any) {
+    console.warn('[relink] thumbnail refresh failed:', err.message);
+  }
+
+  res.json({ success: true });
 });
 
 // Live single-frame preview for seek-bar scrubbing (?file=<id>&t=<seconds>). Extracted on the fly.

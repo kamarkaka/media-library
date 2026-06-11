@@ -633,6 +633,68 @@
     });
   }
 
+  // --- Relink a missing file ---
+  var fixRow = document.getElementById('fix-file-row');
+  var fixInput = document.getElementById('fix-file-input');
+  var fixSave = document.getElementById('fix-file-save');
+  var fixCancel = document.getElementById('fix-file-cancel');
+  var fixStatus = document.getElementById('fix-file-status');
+  var fixFileId = null;
+
+  // The relink form is always present in the page; only the per-file triggers are conditional.
+  if (fixRow) {
+    document.querySelectorAll('[data-fix-file]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        fixFileId = el.dataset.fixFile;
+        fixInput.value = el.dataset.path || '';
+        fixStatus.textContent = '';
+        fixRow.classList.remove('hidden');
+        fixInput.focus();
+      });
+    });
+
+    fixCancel.addEventListener('click', function () {
+      fixRow.classList.add('hidden');
+      fixFileId = null;
+    });
+
+    fixSave.addEventListener('click', submitFixPath);
+    fixInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submitFixPath(); }
+    });
+  }
+
+  function submitFixPath() {
+    var p = (fixInput.value || '').trim();
+    if (!p || !fixFileId) return;
+    fixSave.disabled = true;
+    fixStatus.textContent = 'Relinking…';
+    fixStatus.className = 'text-xs text-gray-400 mt-1 block';
+    fetch('/api/videos/' + videoId + '/files/' + fixFileId + '/path', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: p }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (result) {
+        if (result.ok) {
+          fixStatus.textContent = 'Relinked — reloading…';
+          fixStatus.className = 'text-xs text-green-400 mt-1 block';
+          setTimeout(function () { location.reload(); }, 800);
+        } else {
+          fixStatus.textContent = (result.data && result.data.error) || 'Failed';
+          fixStatus.className = 'text-xs text-red-400 mt-1 block';
+          fixSave.disabled = false;
+        }
+      })
+      .catch(function (err) {
+        fixStatus.textContent = 'Failed: ' + err.message;
+        fixStatus.className = 'text-xs text-red-400 mt-1 block';
+        fixSave.disabled = false;
+      });
+  }
+
   // --- Playback logging ---
 
   // Log: start or resume

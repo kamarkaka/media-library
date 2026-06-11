@@ -249,7 +249,7 @@
       Metadata
     </button>
     <div id="metadata-content" class="text-sm text-gray-400 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-1 mb-4" style="display: grid">
-      <div class="flex justify-between<%= files && files.length > 1 ? ' sm:col-span-2 md:col-span-4' : '' %>"><span class="text-gray-500">Filename<%= files && files.length > 1 ? 's (' + files.length + ')' : '' %></span><span class="text-gray-300 ml-2 <%= files && files.length > 1 ? 'break-words' : 'truncate' %>"><% if (files && files.length) { files.forEach(function (f, i) { %><%- i > 0 ? '  &bull;  ' : '' %><%- f.missing ? disconnectIcon() : '' %><%= f.filename %><% }); } else { %><%= video.filename %><% } %></span></div>
+      <div class="flex justify-between<%= files && files.length > 1 ? ' sm:col-span-2 md:col-span-4' : '' %>"><span class="text-gray-500">Filename<%= files && files.length > 1 ? 's (' + files.length + ')' : '' %></span><span class="text-gray-300 ml-2 <%= files && files.length > 1 ? 'break-words' : 'truncate' %>"><% if (files && files.length) { files.forEach(function (f, i) { %><%- i > 0 ? '  &bull;  ' : '' %><% if (f.missing) { %><a class="text-red-400 hover:text-red-300 cursor-pointer" data-fix-file="<%= f.id %>" data-path="<%= f.path || '' %>" title="File not found — click to relink"><%- disconnectIcon() %><%= f.filename %></a><% } else { %><%= f.filename %><% } %><% }); } else { %><%= video.filename %><% } %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Duration</span><span class="text-gray-300"><%= video.length != null ? Math.floor(video.length / 60) + 'm ' + (video.length % 60) + 's' : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Resolution</span><span class="text-gray-300"><%= video.width && video.height ? video.width + ' × ' + video.height : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Video Codec</span><span class="text-gray-300"><%= video.video_codec || '—' %></span></div>
@@ -257,6 +257,15 @@
       <div class="flex justify-between"><span class="text-gray-500">Framerate</span><span class="text-gray-300"><%= video.framerate != null ? video.framerate + ' fps' : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Bitrate</span><span class="text-gray-300"><%= video.bitrate ? (video.bitrate / 1000).toFixed(0) + ' kbps' : '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">File Size</span><span class="text-gray-300"><%= video.file_size ? (video.file_size >= GB ? (video.file_size / GB).toFixed(2) + ' GB' : (video.file_size / MB).toFixed(1) + ' MB') : '—' %></span></div>
+      <!-- Relink form for a missing file (shown when a broken filename above is clicked) -->
+      <div id="fix-file-row" class="hidden sm:col-span-2 md:col-span-4 mt-2">
+        <div class="flex items-stretch gap-2">
+          <input id="fix-file-input" type="text" placeholder="/corrected/path/to/file" class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+          <button type="button" id="fix-file-save" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded transition-colors flex-shrink-0">Relink</button>
+          <button type="button" id="fix-file-cancel" class="bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs px-3 py-1 rounded transition-colors flex-shrink-0">Cancel</button>
+        </div>
+        <span id="fix-file-status" class="text-xs text-gray-400 mt-1 block"></span>
+      </div>
     </div>
   </div>
 </div>

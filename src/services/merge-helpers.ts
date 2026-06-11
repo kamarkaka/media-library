@@ -30,6 +30,22 @@ export async function setDefaultFile(dbOrTrx: Knex, videoId: string, file: any):
   });
 }
 
+// Write `cols` to a file's video_files row, mirroring them onto the videos row when it's the entry's
+// default file. Shared by the scan re-probe and the relink-file endpoint so the "mirror if default"
+// rule lives in one place.
+export async function applyFileMetadata(
+  dbOrTrx: Knex,
+  fileId: string,
+  videoId: string,
+  isDefault: boolean,
+  cols: Record<string, any>,
+): Promise<void> {
+  await dbOrTrx('video_files').where('id', fileId).update(cols);
+  if (isDefault) {
+    await dbOrTrx('videos').where('id', videoId).update(cols);
+  }
+}
+
 // The surviving entry when merging a same-code group: prefer matched, then oldest, then smallest id.
 function pickSurvivor(rows: any[]): any {
   const sorted = [...rows].sort((a, b) => {

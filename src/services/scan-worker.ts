@@ -1,12 +1,12 @@
 import { parentPort, workerData } from 'worker_threads';
 import fs from 'fs';
 import path from 'path';
-import { execFileSync } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import knexInit from 'knex';
 import { config } from '../config';
 import { cleanupCache } from './hls-transcoder';
-import { pickDefaultFile, setDefaultFile } from './merge-helpers';
+import { pickDefaultFile, setDefaultFile, applyFileMetadata } from './merge-helpers';
+import { getVideoInfo, videoInfoColumns, type VideoInfo } from './video-probe';
 import type { ScanProgress } from './scanner';
 
 const { fullScan } = workerData as { fullScan: boolean };
@@ -44,78 +44,6 @@ function walkDirectory(dir: string): string[] {
     console.error(`Error scanning directory ${dir}:`, err);
   }
   return results;
-}
-
-interface VideoInfo {
-  duration: number | null;
-  width: number | null;
-  height: number | null;
-  videoCodec: string | null;
-  audioCodec: string | null;
-  bitrate: number | null;
-  framerate: number | null;
-  fileSize: number | null;
-}
-
-function getVideoInfo(filePath: string): VideoInfo {
-  const info: VideoInfo = {
-    duration: null, width: null, height: null,
-    videoCodec: null, audioCodec: null, bitrate: null,
-    framerate: null, fileSize: null,
-  };
-  try {
-    const output = execFileSync('ffprobe', [
-      '-v', 'fatal',
-      '-show_entries', 'format=duration,size,bit_rate',
-      '-show_entries', 'stream=codec_type,codec_name,width,height,r_frame_rate',
-      '-of', 'json',
-      filePath,
-    ], { timeout: 30000, encoding: 'utf-8' });
-
-    const data = JSON.parse(output);
-    const format = data.format || {};
-    const streams: any[] = data.streams || [];
-    const videoStream = streams.find((s: any) => s.codec_type === 'video');
-    const audioStream = streams.find((s: any) => s.codec_type === 'audio');
-
-    const dur = parseFloat(format.duration);
-    info.duration = isNaN(dur) ? null : Math.round(dur);
-    info.fileSize = format.size ? parseInt(format.size, 10) : null;
-    info.bitrate = format.bit_rate ? parseInt(format.bit_rate, 10) : null;
-
-    if (videoStream) {
-      info.width = videoStream.width || null;
-      info.height = videoStream.height || null;
-      info.videoCodec = videoStream.codec_name || null;
-      if (videoStream.r_frame_rate) {
-        const [num, den] = videoStream.r_frame_rate.split('/').map(Number);
-        if (den && !isNaN(num / den)) {
-          info.framerate = Math.round((num / den) * 100) / 100;
-        }
-      }
-    }
-    if (audioStream) {
-      info.audioCodec = audioStream.codec_name || null;
-    }
-
-    return info;
-  } catch (err) {
-    console.warn(`[scan] ffprobe failed for ${path.basename(filePath)}:`, err);
-    return info;
-  }
-}
-
-function videoInfoColumns(info: VideoInfo): Record<string, any> {
-  return {
-    length: info.duration,
-    width: info.width,
-    height: info.height,
-    video_codec: info.videoCodec,
-    audio_codec: info.audioCodec,
-    bitrate: info.bitrate,
-    framerate: info.framerate,
-    file_size: info.fileSize,
-  };
 }
 
 function formatVideoSummary(info: VideoInfo): string {
@@ -201,12 +129,8 @@ async function run(): Promise<void> {
             progress({ step: 'Probing video info' });
             console.log(`[scan] ${label} ${filename} — probing video info`);
             const info = getVideoInfo(filePath);
-            const cols = videoInfoColumns(info);
-            await db('video_files').where('id', existing.file_id).update(cols);
-            // Keep the videos-row mirror in sync when re-probing its default file
-            if (existing.is_default) {
-              await db('videos').where('id', existing.video_id).update(cols);
-            }
+            // Update the file's columns, mirroring onto the videos row if it's the default file
+            await applyFileMetadata(db, existing.file_id, existing.video_id, existing.is_default, videoInfoColumns(info));
             console.log(`[scan] ${label} ${filename} — ${formatVideoSummary(info)}`);
           }
           updated++;

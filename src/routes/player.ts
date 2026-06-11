@@ -48,6 +48,7 @@ router.get('/:id', async (req, res) => {
     directPlay: computeDirectPlay(f.full_path, f.video_codec, f.audio_codec),
     streamUrl: `/api/videos/${video.id}/stream?file=${f.id}`,
     hlsUrl: `/api/videos/${video.id}/hls?file=${f.id}`,
+    path: f.full_path,
     missing: !f.full_path || !fs.existsSync(f.full_path),
   }));
 
