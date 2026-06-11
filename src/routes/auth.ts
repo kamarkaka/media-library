@@ -12,19 +12,18 @@ router.get('/login', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
+  // The single owner account is always 'admin' (config.authUsername); only the password is entered.
+  const { password } = req.body;
 
   if (
-    username === config.authUsername &&
     config.authPasswordHash &&
     bcrypt.compareSync(password, config.authPasswordHash)
   ) {
     req.session.authenticated = true;
-    req.session.username = username;
     return res.redirect('/');
   }
 
-  res.render('login', { title: 'Login', error: 'Invalid username or password' });
+  res.render('login', { title: 'Login', error: 'Invalid password' });
 });
 
 router.post('/logout', (req, res) => {

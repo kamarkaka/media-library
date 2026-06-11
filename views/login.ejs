@@ -8,14 +8,9 @@
     </div>
     <% } %>
     <form method="POST" action="/login">
-      <div class="mb-4">
-        <label class="block text-gray-400 mb-1 text-sm" for="username">Username</label>
-        <input type="text" id="username" name="username" required autofocus
-          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-      </div>
       <div class="mb-6">
         <label class="block text-gray-400 mb-1 text-sm" for="password">Password</label>
-        <input type="password" id="password" name="password" required
+        <input type="password" id="password" name="password" required autofocus
           class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500">
       </div>
       <button type="submit"
