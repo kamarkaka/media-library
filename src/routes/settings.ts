@@ -2,12 +2,24 @@ import { Router } from 'express';
 import db, { getIntSetting } from '../db';
 import { listScrapers } from '../scrapers/base';
 import { getLatestValidationResults } from '../services/validator-scheduler';
+import { fileMissing } from '../services/video-queries';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
   const paths = await db('library_paths').orderBy('created_at', 'desc');
   const countResult = (await db('videos').count('* as count').first()) as any;
+
+  // Videos with at least one physical file whose path no longer exists, so the user can relink them.
+  const allFiles = await db('video_files').select('video_id', 'full_path');
+  const checked = await Promise.all(
+    allFiles.map(async (f: any) => ({ videoId: f.video_id, missing: await fileMissing(f.full_path) })),
+  );
+  const missingVideoIds = [...new Set(checked.filter((c) => c.missing).map((c) => c.videoId))];
+  const missingVideos = await db('videos')
+    .whereIn('id', missingVideoIds)
+    .select('id', 'name', 'filename', 'code')
+    .orderBy('filename', 'asc');
 
   const validationResults = await getLatestValidationResults();
   const seekStep = await getIntSetting(db, 'seek_step', 10);
@@ -36,6 +48,7 @@ router.get('/', async (req, res) => {
   res.render('settings', {
     title: 'Settings',
     paths,
+    missingVideos,
     videoCount: countResult?.count || 0,
     scrapers: listScrapers(),
     validationResults,

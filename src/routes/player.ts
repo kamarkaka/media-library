@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import fs from 'fs';
 import db, { getIntSetting } from '../db';
-import { getVideoNeighbors } from '../services/video-queries';
+import { getVideoNeighbors, fileMissing } from '../services/video-queries';
 import { listScrapers } from '../scrapers/base';
 import { listThumbnailsForCode } from '../services/thumbnail-generator';
 
@@ -41,7 +40,7 @@ router.get('/:id', async (req, res) => {
 
   // Load all physical files for this entry (alphabetical; the first is the default to play)
   const fileRows = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc');
-  const files = fileRows.map((f: any) => ({
+  const files = await Promise.all(fileRows.map(async (f: any) => ({
     id: f.id,
     filename: f.filename,
     isDefault: f.id === video.default_file_id,
@@ -49,8 +48,8 @@ router.get('/:id', async (req, res) => {
     streamUrl: `/api/videos/${video.id}/stream?file=${f.id}`,
     hlsUrl: `/api/videos/${video.id}/hls?file=${f.id}`,
     path: f.full_path,
-    missing: !f.full_path || !fs.existsSync(f.full_path),
-  }));
+    missing: await fileMissing(f.full_path),
+  })));
 
   // Thumbnails are stored per code (continuous across the entry's files)
   const thumbnails = listThumbnailsForCode(video.id, video.code);

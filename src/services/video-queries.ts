@@ -1,5 +1,13 @@
 import db from '../db';
+import fs from 'fs';
 import type { Knex } from 'knex';
+
+// A physical file is "missing" when its path is empty or no longer exists on disk. Shared by the
+// player page (per-file disconnect badge) and the settings page (missing-files list) so both agree.
+export function fileMissing(fullPath: string | null): Promise<boolean> {
+  if (!fullPath) return Promise.resolve(true);
+  return fs.promises.access(fullPath).then(() => false, () => true);
+}
 
 export interface VideoFilters {
   q?: string;
