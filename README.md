@@ -6,13 +6,15 @@ A self-hosted media management system for browsing, streaming, and managing a lo
 
 - **Video library** — scan configured directories; browse with cover images; multi-select pill filters (genre, cast, director, maker, label, matched/unmatched) and search
 - **Streaming** — compatible files play directly via HTTP range requests; everything else is transcoded to HLS on demand (360p/720p/1080p + original)
-- **Custom player** — quality selector, file selector, fullscreen (incl. iOS), keyboard shortcuts, swipe-to-seek, click-to-play cover, and a thumbnail carousel
+- **Custom player** — quality selector, file selector, fullscreen (incl. iOS), keyboard shortcuts, swipe-to-seek with a live preview thumbnail while scrubbing, click-to-play cover, and a thumbnail carousel
 - **Multiple files per entry** — videos that share a code are merged into one entry; choose which file to play from the player
 - **Thumbnail snapshots** — generate evenly-spaced preview frames per file with FFmpeg; click one for a full-size lightbox
+- **Favorite moments** — bookmark any video at a timestamp and jump straight back to it; each bookmark gets an auto-generated thumbnail
 - **Resume playback** — saves position automatically, resume from where you left off; prev/next navigation between videos
+- **Missing-file handling** — a scan never deletes entries whose files moved or were deleted; broken files are flagged in the player and listed in Settings, where you can relink the path or remove the entry (and its generated artifacts) entirely
 - **Metadata** — director, maker, label, genres, cast, release date, cover images (all optional); fields you edit by hand are never overwritten by scraping
 - **Pluggable scrapers** — five bundled Puppeteer scrapers (javtrailers default, 123av, javxx, missav, javfilms) plus a NoOp fallback; metadata can be sourced per-field from different scrapers
-- **Authentication** — session-based login to protect against unauthorized remote access
+- **Authentication** — single-owner password login (session-based) to protect against unauthorized remote access
 - **Docker deployment** — single image, single port, SQLite database
 
 ## Requirements
@@ -292,8 +294,9 @@ All fields are optional — return only what you can extract:
 | `HLS_CACHE_DIR` | `data/hls-cache` | Where transcoded HLS segments are cached |
 | `COVER_CACHE_DIR` | `data/covers` | Where downloaded cover images are stored |
 | `THUMBNAIL_CACHE_DIR` | `/data/thumbnail` | Where generated thumbnails are stored (absolute path) |
+| `MOMENT_CACHE_DIR` | `/data/moments` | Where favorite-moment snapshots are stored (absolute path) |
 | `CHROMIUM_PATH` | `/usr/bin/chromium-browser` | Path to Chromium binary (for scrapers) |
 | `VALIDATOR_ENABLED` | `true` | Run the daily scraper-validation cron (`false` to disable) |
 | `VALIDATOR_CRON` | `0 8 * * *` | Cron schedule for scraper validation |
 
-Most data paths default to module-relative `data/…` (resolved next to the compiled code), so set them explicitly in Docker if you want them on a mounted volume. `THUMBNAIL_CACHE_DIR` is the exception — it defaults to the absolute `/data/thumbnail`; override it for local development if `/data` isn't writable.
+Most data paths default to module-relative `data/…` (resolved next to the compiled code), so set them explicitly in Docker if you want them on a mounted volume. `THUMBNAIL_CACHE_DIR` and `MOMENT_CACHE_DIR` are the exceptions — they default to the absolute `/data/thumbnail` and `/data/moments`; override them for local development if `/data` isn't writable.
