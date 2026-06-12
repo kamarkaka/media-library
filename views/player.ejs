@@ -16,7 +16,7 @@
     <video id="video-player" class="w-full" style="max-width: 960px" playsinline></video>
 
     <% if (video.cover_image) { %>
-    <div id="cover-overlay" class="absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-500 z-20" style="max-width: 960px; margin: 0 auto; left: 0; right: 0;">
+    <div id="cover-overlay" class="absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-500 z-20 bg-black" style="max-width: 960px; margin: 0 auto; left: 0; right: 0;">
       <img src="/api/videos/<%= video.id %>/cover" alt="" class="absolute inset-0 w-full h-full object-contain">
       <button id="cover-play-btn" class="relative z-10 w-16 h-16 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors">
         <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
