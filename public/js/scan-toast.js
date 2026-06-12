@@ -94,6 +94,7 @@
             if (data.removed) summary.push('removed ' + data.removed);
           } else {
             if (data.added) summary.push('Added ' + data.added);
+            if (data.relinked) summary.push('Relinked ' + data.relinked);
             if (data.updated) summary.push('Updated ' + data.updated);
             if (data.removed) summary.push('Removed ' + data.removed);
           }

@@ -1,5 +1,8 @@
+import path from 'path';
 import type { Knex } from 'knex';
 import { cleanupCache } from './hls-transcoder';
+import { getVideoInfo, videoInfoColumns } from './video-probe';
+import { generateThumbnailsForEntry } from './thumbnail-generator';
 
 // The default file for an entry is the alphabetically-first filename.
 export async function pickDefaultFile(dbOrTrx: Knex, videoId: string): Promise<any> {
@@ -43,6 +46,62 @@ export async function applyFileMetadata(
   await dbOrTrx('video_files').where('id', fileId).update(cols);
   if (isDefault) {
     await dbOrTrx('videos').where('id', videoId).update(cols);
+  }
+}
+
+// Relink one physical file to a new on-disk path: re-probe its metadata (mirrored onto the videos row
+// when it's the default file), drop the now-stale HLS transcode, and refresh the entry's thumbnails.
+// Shared by the manual relink endpoint (videos.ts) and the scan worker's moved/renamed-file reconcile,
+// so the "re-probe + mirror + invalidate caches" rule lives in one place. `thumbnailCount` is passed in
+// (rather than read here) so this stays free of the db singleton and is safe to call from a worker.
+export async function relinkFile(
+  db: Knex,
+  file: { id: string },
+  video: { id: string; code: string | null },
+  newPath: string,
+  thumbnailCount: number,
+  regenerateThumbnails = true,
+): Promise<void> {
+  const cols = videoInfoColumns(getVideoInfo(newPath));
+  const filename = path.basename(newPath);
+
+  // Apply the metadata change atomically and against current state. Re-reading inside the transaction
+  // means a concurrent delete or default-file change can't corrupt the videos-row mirror: if the file
+  // row vanished we abort (the caller treats it as a failed relink), the default flag reflects the
+  // committed state, and the video_files + mirrored videos updates either both land or neither does.
+  await db.transaction(async (trx) => {
+    const cur = await trx('video_files').where('id', file.id).first();
+    if (!cur) throw new Error(`video_files row ${file.id} no longer exists`);
+    const parent = await trx('videos').where('id', cur.video_id).select('default_file_id').first();
+    const isDefault = (parent && parent.default_file_id === file.id) || !!cur.is_default;
+    await applyFileMetadata(trx, file.id, cur.video_id, isDefault, { full_path: newPath, filename, ...cols });
+  });
+
+  // The old transcode segments no longer match the file on disk; drop them (cache is keyed by video id).
+  cleanupCache(video.id);
+
+  // Thumbnails span all of the entry's files; a batch reconcile defers this to one pass per entry (so a
+  // multi-file entry isn't regenerated once per relinked file), hence the opt-out.
+  if (regenerateThumbnails) await regenerateEntryThumbnails(db, video.id, video.code, thumbnailCount);
+}
+
+// Regenerate an entry's thumbnails (keyed by code, spanning all its files). Best-effort: a failure is
+// logged, never thrown. No-op when the entry has no code (there is nowhere to store them).
+export async function regenerateEntryThumbnails(
+  db: Knex,
+  videoId: string,
+  code: string | null,
+  thumbnailCount: number,
+): Promise<void> {
+  if (!code) return;
+  try {
+    const fileRows = await db('video_files')
+      .where('video_id', videoId)
+      .orderBy('filename', 'asc')
+      .select('full_path', 'length');
+    await generateThumbnailsForEntry(code, fileRows, thumbnailCount);
+  } catch (err: any) {
+    console.warn('[relink] thumbnail refresh failed:', err.message);
   }
 }
 

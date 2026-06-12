@@ -7,8 +7,7 @@ import {
   generateMasterPlaylist, isTranscoded, isTranscoding,
   getPlaylistContent, getSegmentPath, startTranscoding, cleanupCache,
 } from '../../services/hls-transcoder';
-import { getVideoInfo, videoInfoColumns } from '../../services/video-probe';
-import { applyFileMetadata } from '../../services/merge-helpers';
+import { relinkFile } from '../../services/merge-helpers';
 import path from 'path';
 import { listScrapers, getScraper, getResolver } from '../../scrapers/base';
 import { config } from '../../config';
@@ -113,23 +112,10 @@ router.put('/:id/files/:fileId/path', async (req, res) => {
   const clash = await db('video_files').where('full_path', resolved).whereNot('id', file.id).first();
   if (clash) return res.status(409).json({ error: 'Another video file already uses that path' });
 
-  // Re-probe technical metadata and relink the file (mirrored onto videos if it's the default file)
-  const cols = videoInfoColumns(getVideoInfo(resolved));
-  const filename = path.basename(resolved);
-  const isDefault = video.default_file_id === file.id || !!file.is_default;
-  await applyFileMetadata(db, file.id, video.id, isDefault, { full_path: resolved, filename, ...cols });
-
-  // The old transcode is stale; drop it and refresh the entry's thumbnails (best-effort)
-  cleanupCache(video.id);
-  try {
-    if (video.code) {
-      const count = await getIntSetting(db, 'thumbnail_count', 10);
-      const fileRows = await db('video_files').where('video_id', video.id).orderBy('filename', 'asc').select('full_path', 'length');
-      await generateThumbnailsForEntry(video.code, fileRows, count);
-    }
-  } catch (err: any) {
-    console.warn('[relink] thumbnail refresh failed:', err.message);
-  }
+  // Re-probe + relink the file, drop the stale transcode, and refresh thumbnails. Shared with the scan
+  // worker's moved/renamed-file reconcile so both paths apply the same rules.
+  const count = await getIntSetting(db, 'thumbnail_count', 10);
+  await relinkFile(db, file, video, resolved, count);
 
   res.json({ success: true });
 });

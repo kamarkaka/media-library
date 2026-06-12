@@ -11,6 +11,7 @@ export interface ScanProgress {
   added: number;
   updated: number;
   removed: number;
+  relinked: number;
   error?: string;
 }
 
@@ -24,6 +25,7 @@ function createProgress(): ScanProgress {
     added: 0,
     updated: 0,
     removed: 0,
+    relinked: 0,
   };
 }
 
