@@ -51,8 +51,8 @@ select {
   user-select: none;
 }
 
-/* Stick video to top while playing */
-#video-container.sticky-player {
+/* Pin the player + prev/next + save-moment bar to the top together while playing */
+#player-sticky.sticky-player {
   position: sticky;
   top: 0;
   z-index: 30;

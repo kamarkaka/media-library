@@ -1,6 +1,8 @@
 <%- include('partials/head') %>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <div class="flex flex-col flex-1">
+  <!-- Player + prev/next + save-moment bar pin to the top together while the video plays -->
+  <div id="player-sticky">
   <!-- Video Player -->
   <div id="video-container" class="bg-black flex items-center justify-center relative"
        data-video-id="<%= video.id %>"
@@ -101,6 +103,7 @@
     </span>
     <% } %>
   </div>
+  </div><!-- /#player-sticky -->
 
   <!-- Thumbnails -->
   <% const hasThumbs = (thumbnails || []).length > 0; %>

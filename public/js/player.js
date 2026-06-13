@@ -187,10 +187,12 @@
   video.addEventListener('play', updatePlayIcon);
   video.addEventListener('pause', updatePlayIcon);
 
-  // Stick video to top while playing
-  video.addEventListener('play', function () { container.classList.add('sticky-player'); });
-  video.addEventListener('pause', function () { container.classList.remove('sticky-player'); });
-  video.addEventListener('ended', function () { container.classList.remove('sticky-player'); });
+  // Pin the player + prev/next + save-moment bar to the top together while playing
+  var stickyWrap = document.getElementById('player-sticky');
+  function setSticky(on) { if (stickyWrap) stickyWrap.classList.toggle('sticky-player', on); }
+  video.addEventListener('play', function () { setSticky(true); });
+  video.addEventListener('pause', function () { setSticky(false); });
+  video.addEventListener('ended', function () { setSticky(false); });
 
   // HLS.js provides duration via level details before the video element does
   var hlsDuration = 0;
