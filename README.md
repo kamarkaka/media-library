@@ -38,6 +38,15 @@ npm run dev
 
 Open http://localhost:3000, log in, go to **Settings** to add video paths and scan your library.
 
+> On first run, if no credentials are set, a temporary password is generated and printed to the console. Run `npm run setup-auth` to set a permanent one, or change it later in Settings.
+
+### Production (without Docker)
+
+```bash
+npm run build   # compile TypeScript to dist/
+npm start       # run the compiled server (node dist/index.js)
+```
+
 ## Docker
 
 ```bash
@@ -111,8 +120,9 @@ src/
 ├── config.ts               # Environment config
 ├── db.ts                   # SQLite schema + connection
 ├── cli.ts                  # setup-auth, hash-password
+├── session-store.ts        # SQLite-backed express-session store
 ├── middleware/auth.ts       # Session auth
-├── routes/                 # Page routes + API routes
+├── routes/                 # Page routes (library, player, tags, moments, settings) + API routes
 ├── services/               # Scan/scrape/merge/thumbnail workers, HLS transcoder, query helpers
 └── scrapers/               # Pluggable scraper interface
 views/                      # EJS templates
