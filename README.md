@@ -57,6 +57,40 @@ volumes:
 
 Then add `/media` as a library path in the Settings page.
 
+## Deployment
+
+Deployment is two steps: build & publish the image from your machine, then pull & recreate it on the server.
+
+### 1. Build and publish the image (from your machine)
+
+The `Build and Push Docker Image` workflow (`.github/workflows/docker.yml`) builds the image and pushes it to Docker Hub (`kamarkaka4/media-library`). Trigger it manually with the [GitHub CLI](https://cli.github.com/):
+
+```bash
+# Auto-bump the patch version (e.g. v1.2.3 → v1.2.4)
+gh workflow run docker.yml
+
+# Or pin an explicit version X.Y.Z — creates the git tag v<version>
+# and tags the image kamarkaka4/media-library:<version>
+gh workflow run docker.yml -f version=1.4.0
+
+# Follow the run
+gh run watch
+```
+
+A successful run tags both `kamarkaka4/media-library:latest` and `kamarkaka4/media-library:<version>`, and pushes a matching `v<version>` git tag.
+
+### 2. Pull and recreate on the server
+
+SSH to the server, then from the directory holding your `docker-compose.yml`:
+
+```bash
+docker compose pull media-library                                     # fetch the latest image
+docker compose up -d media-library --force-recreate --remove-orphans  # recreate the container with the new image
+docker system prune --volumes -a                                      # optional: drop the now-dangling old image
+```
+
+`docker compose up -d` only recreates the container when the image changed, so existing data on the `./data` volume is preserved.
+
 ## Tech Stack
 
 | Layer     | Technology                    |
