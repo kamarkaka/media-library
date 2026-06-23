@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 8 * * *'
   workflow_dispatch: # Allows you to run this manually for testing
+    inputs:
+      version:
+        description: 'Release version X.Y.Z (leave empty to auto-bump the patch number)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -11,7 +16,18 @@ permissions:
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
+    env:
+      INPUT_VERSION: ${{ inputs.version }}
     steps:
+      - name: Validate version input
+        if: inputs.version != ''
+        run: |
+          if ! echo "$INPUT_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid version '$INPUT_VERSION'. Expected format X.Y.Z (e.g. 1.2.3)."
+            exit 1
+          fi
+          echo "Using explicit version: $INPUT_VERSION"
+
       - name: Checkout Code
         uses: actions/checkout@v6.0.2
         with:
@@ -21,6 +37,11 @@ jobs:
       - name: Check for changes since last build
         id: check_commits
         run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            echo "new_commits=true" >> $GITHUB_OUTPUT
+            echo "Explicit version provided. Forcing build."
+            exit 0
+          fi
           LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
           if [ -z "$LATEST_TAG" ]; then
             echo "new_commits=true" >> $GITHUB_OUTPUT
@@ -37,6 +58,13 @@ jobs:
         if: steps.check_commits.outputs.new_commits == 'true'
         id: version
         run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            # Explicit version requested via workflow_dispatch input (already format-validated)
+            NEW_VERSION="$INPUT_VERSION"
+            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "Version: $NEW_VERSION"
+            exit 0
+          fi
           # Get the latest version tag (e.g., v1.2.3)
           LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -n1)
           if [ -z "$LATEST_TAG" ]; then
