@@ -11,8 +11,8 @@
 
     <% if (typeof groups !== 'undefined' && groups) { %>
     <% groups.forEach(function(group, gi) { %>
-    <div class="<%= gi > 0 ? 'mt-6' : '' %>">
-      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3"><%= group.label %> <span class="text-gray-600">(<%= group.tags.length %>)</span></h2>
+    <details class="<%= gi > 0 ? 'mt-6' : '' %>"<%= group.collapsed ? '' : ' open' %>>
+      <summary class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 cursor-pointer select-none"><%= group.label %> <span class="text-gray-600">(<%= group.tags.length %>)</span></summary>
       <div<% if (group.isAddTarget) { %> id="tag-list"<% } %> class="flex flex-wrap gap-2">
         <% group.tags.forEach(function(tag) { %>
         <%- include('partials/tag-item', { tag: tag, tagType: tagType }) %>
@@ -21,7 +21,7 @@
       <% if (group.tags.length === 0) { %>
       <p class="text-gray-500 text-sm">None.</p>
       <% } %>
-    </div>
+    </details>
     <% }) %>
     <% } else { %>
     <div id="tag-list" class="flex flex-wrap gap-2">

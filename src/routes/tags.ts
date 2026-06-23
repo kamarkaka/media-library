@@ -37,7 +37,8 @@ router.get('/cast', async (_req, res) => {
     groups: [
       { label: 'Featured solo', tags: cast.filter((c) => c.has_solo) },
       // New members start with no videos, so they belong here — mark it the add target.
-      { label: 'Always co-starring', tags: cast.filter((c) => !c.has_solo), isAddTarget: true },
+      // Folded by default: this group is usually the larger, less-interesting bucket.
+      { label: 'Always co-starring', tags: cast.filter((c) => !c.has_solo), isAddTarget: true, collapsed: true },
     ],
   });
 });
