@@ -128,6 +128,8 @@ export async function queryVideos(filters: VideoFilters) {
     query = query
       .leftJoin('playback_state', 'videos.id', 'playback_state.video_id')
       .orderByRaw('playback_state.last_viewed DESC NULLS LAST');
+  } else if (sort === 'added_date') {
+    query = query.orderByRaw('added_date DESC NULLS LAST');
   } else {
     query = query.orderByRaw('release_date ASC NULLS LAST');
   }

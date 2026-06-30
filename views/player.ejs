@@ -150,6 +150,7 @@
       <div class="flex justify-between"><span class="text-gray-500">Code</span><span class="text-gray-300 ml-2" data-view="code"><%= video.code || '—' %><%- srcBadge('code') %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Name</span><span class="text-gray-300 truncate ml-2" data-view="name"><%= video.name || '—' %><%- srcBadge('name') %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Release Date</span><span class="text-gray-300 ml-2" data-view="release_date" data-date="<%= video.release_date || '' %>"><%= video.release_date || '—' %><%- srcBadge('release_date') %></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Added Date</span><span class="text-gray-300 ml-2" data-view="added_date" data-date="<%= video.added_date || '' %>"><%= video.added_date || '—' %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Director</span><span class="text-gray-300 ml-2" data-view="director"><%= video.director || '—' %><%- srcBadge('director') %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Maker</span><span class="text-gray-300 ml-2" data-view="maker"><%= video.maker || '—' %><%- srcBadge('maker') %></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Label</span><span class="text-gray-300 ml-2" data-view="label"><%= video.label || '—' %><%- srcBadge('label') %></span></div>
@@ -174,6 +175,11 @@
         <div>
           <label class="block text-gray-500 mb-1">Release Date</label>
           <input type="date" name="release_date" value="<%= video.release_date || '' %>"
+            class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-gray-500 mb-1">Added Date</label>
+          <input type="date" name="added_date" value="<%= video.added_date || '' %>"
             class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500">
         </div>
         <div>

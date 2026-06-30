@@ -216,6 +216,8 @@ async function run(): Promise<void> {
               filename,
               full_path: filePath,
               default_file_id: fileId,
+              // Date the entry was added to the library (today), distinct from the scraped release_date.
+              added_date: new Date().toISOString().slice(0, 10),
               ...cols,
             });
             await trx('video_files').insert({

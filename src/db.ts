@@ -36,6 +36,7 @@ export async function initDatabase(): Promise<void> {
       t.text('filename').notNullable();
       t.text('full_path').notNullable().unique();
       t.date('release_date').nullable();
+      t.date('added_date').nullable();
       t.integer('length').nullable();
       t.text('director').nullable();
       t.text('maker').nullable();
@@ -200,6 +201,7 @@ export async function initDatabase(): Promise<void> {
     ['matched', 'INTEGER DEFAULT 0'],
     ['source_url', 'TEXT'],
     ['default_file_id', 'TEXT'],
+    ['added_date', 'DATE'],
   ];
   for (const [name, type] of newCols) {
     if (!colNames.has(name)) {
@@ -214,6 +216,7 @@ export async function initDatabase(): Promise<void> {
   }
 
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_release_date ON videos(release_date)');
+  await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_added_date ON videos(added_date)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_director ON videos(director)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_maker ON videos(maker)');
   await db.raw('CREATE INDEX IF NOT EXISTS idx_videos_label ON videos(label)');
@@ -244,6 +247,44 @@ export async function initDatabase(): Promise<void> {
         await trx('videos').where('id', v.id).update({ default_file_id: fileId });
       }
     });
+  }
+
+  // Backfill added_date for pre-existing videos that lack one. "Added date" = when the entry entered the
+  // library; for rows that predate this column we approximate it with the earliest last-modified time among
+  // the entry's files on disk. Rows whose files are all missing stay NULL and are retried on later boots
+  // (cheap). New videos get added_date set at insert time, so they are never picked up here.
+  const needsAddedDate = await db('videos').whereNull('added_date').select('id', 'full_path');
+  if (needsAddedDate.length > 0) {
+    // One query for all candidate files, grouped in memory (avoids an N+1 lookup per video).
+    const filesByVideo = new Map<string, string[]>();
+    const allFiles = await db('video_files')
+      .whereIn('video_id', needsAddedDate.map((v) => v.id))
+      .select('video_id', 'full_path');
+    for (const f of allFiles) {
+      if (!f.full_path) continue;
+      const list = filesByVideo.get(f.video_id);
+      if (list) list.push(f.full_path);
+      else filesByVideo.set(f.video_id, [f.full_path]);
+    }
+    // Stat files outside the write transaction; collect each entry's earliest mtime, then batch the updates.
+    const updates: { id: string; added_date: string }[] = [];
+    for (const v of needsAddedDate) {
+      // Legacy fallback: an entry with no video_files rows still has its path mirrored on the videos row.
+      const paths = filesByVideo.get(v.id) || (v.full_path ? [v.full_path] : []);
+      const mtimes = paths
+        .map((p) => { try { return fs.statSync(p).mtimeMs; } catch { return null; } })
+        .filter((m): m is number => m !== null);
+      if (mtimes.length > 0) {
+        updates.push({ id: v.id, added_date: new Date(Math.min(...mtimes)).toISOString().slice(0, 10) });
+      }
+    }
+    if (updates.length > 0) {
+      await db.transaction(async (trx) => {
+        for (const u of updates) {
+          await trx('videos').where('id', u.id).update({ added_date: u.added_date });
+        }
+      });
+    }
   }
 }
 

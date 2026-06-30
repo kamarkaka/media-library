@@ -243,6 +243,22 @@
     renderPills();
   }
 
+  // --- Sort select ---
+  var sortSelect = document.getElementById('sort-select');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', function () {
+      var url = new URL(window.location.href);
+      // release_date is the default, so omit it from the URL to keep things clean.
+      if (sortSelect.value && sortSelect.value !== 'release_date') {
+        url.searchParams.set('sort', sortSelect.value);
+      } else {
+        url.searchParams.delete('sort');
+      }
+      url.searchParams.delete('page');
+      window.location = url.toString();
+    });
+  }
+
   // --- Search autocomplete ---
   var searchInput = document.getElementById('search-input');
   var searchDropdown = document.getElementById('search-dropdown');

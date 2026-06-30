@@ -843,12 +843,14 @@
       var span = detailsView.querySelector('[data-view="' + field + '"]');
       if (input && span) span.textContent = input.value || '—';
     });
-    // Release date — format to locale
-    var dateInput = detailsForm.querySelector('[name="release_date"]');
-    var dateSpan = detailsView.querySelector('[data-view="release_date"]');
-    if (dateInput && dateSpan) {
-      dateSpan.textContent = dateInput.value ? formatLocaleDate(dateInput.value) : '—';
-    }
+    // Date fields — format to locale
+    ['release_date', 'added_date'].forEach(function (field) {
+      var dateInput = detailsForm.querySelector('[name="' + field + '"]');
+      var dateSpan = detailsView.querySelector('[data-view="' + field + '"]');
+      if (dateInput && dateSpan) {
+        dateSpan.textContent = dateInput.value ? formatLocaleDate(dateInput.value) : '—';
+      }
+    });
     // URL fields: show as link or "—"
     ['cover_image'].forEach(function (field) {
       var input = detailsForm.querySelector('[name="' + field + '"]');
